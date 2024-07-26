@@ -1,0 +1,18 @@
+services:
+  relay_control:
+    image: relay_control:latest
+    build:
+      context: ./relay_control
+      dockerfile: Dockerfile
+    container_name: relay_control
+    restart: always
+    privileged: true
+    environment:
+      - CONTROL_CONFIG=/config/control_config.json
+    volumes:
+      - /dev/mem:/dev/mem
+      - ./relay_control:/app
+    ports:
+      - 5000:5000
+volumes:
+  config:
