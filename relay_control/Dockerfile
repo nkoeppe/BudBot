@@ -11,6 +11,13 @@ COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+RUN apt update && apt install -y wget unzip
+
+RUN wget https://github.com/joan2937/pigpio/archive/master.zip && \
+    unzip master.zip && \
+    cd pigpio-master && \
+    make && \
+    make install
 
 COPY . .
 
@@ -19,6 +26,7 @@ EXPOSE 80
 
 # Define environment variable
 ENV NAME World
+ENV PYTHONPATH /app
 
 # Run app.py when the container launches
-CMD ["python", "app/main.py"]
+CMD ["python", "-m", "app.main"]

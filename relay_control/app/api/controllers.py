@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
-from relay_controller import RelayController
+from app.controller.relay_controller import RelayController
+
 
 main = Blueprint('main', __name__)
 relay_controller = RelayController()
@@ -25,7 +26,7 @@ def turn_off(device, index):
         return jsonify({"status": "error", "message": f"{device.capitalize()} {index} not found"}), 404
 
 @main.route('/control/on_all/<string:device>', methods=['POST'])
-def turn_on_all(device):
+def turn_on_all_of_device_group(device):
     device_pins = relay_controller.get_device_pins(device)
     if device_pins:
         for pin in device_pins:
@@ -33,6 +34,12 @@ def turn_on_all(device):
         return jsonify({"status": "success", "message": f"All {device} devices turned on"}), 200
     else:
         return jsonify({"status": "error", "message": f"{device.capitalize()} devices not found"}), 404
+
+@main.route('/control/on_all', methods=['POST'])
+def turn_on_all():
+    for pin in relay_controller.relay_pins:
+        relay_controller.turn_on(pin)
+    return jsonify({"status": "success", "message": "All devices turned on"}), 200
 
 @main.route('/control/off_all', methods=['POST'])
 def turn_off_all():
@@ -58,3 +65,8 @@ def cleanup():
 def test():
     relay_controller.test()
     return jsonify({"status": "success", "message": "Test completed"}), 200
+
+@main.route('/control/test/<int:pin>', methods=['POST'])
+def test_pin(pin):
+    relay_controller.test_pin(pin)
+    return jsonify({"status": "success", "message": f"Test completed for pin {pin}"}), 200

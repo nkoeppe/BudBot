@@ -5,14 +5,20 @@ services:
       context: ./relay_control
       dockerfile: Dockerfile
     container_name: relay_control
-    restart: always
+    # restart: always
     privileged: true
     environment:
       - CONTROL_CONFIG=/config/control_config.json
+      - PYTHONPATH=/app
     volumes:
-      - /dev/mem:/dev/mem
       - ./relay_control:/app
     ports:
       - 5000:5000
-volumes:
-  config:
+
+  gpio_deamon:
+    image: zinen2/alpine-pigpiod:latest
+    container_name: gpio_deamon
+    # restart: always
+    privileged: true
+    ports:
+      - 8888:8888
