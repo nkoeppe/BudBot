@@ -4,8 +4,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 from flask import Blueprint, jsonify, request
+from app.config.config_manager import ConfigManager
 
 main = Blueprint('main', __name__)
+config_manager = ConfigManager()
 
 # These will be set by the main module
 relay_controller = None
@@ -36,13 +38,6 @@ def pin_status(pin):
     status = relay_controller.get_pin_state(pin)
     logger.info("Status for pin %d: %d", pin, status)
     return jsonify({'pin': pin, 'status': status})
-
-@main.route('/control/cleanup', methods=['POST'])
-def cleanup():
-    logger.debug("Cleaning up GPIO")
-    relay_controller.cleanup()
-    logger.info("GPIO cleanup done")
-    return jsonify({"status": "success", "message": "GPIO cleanup done"}), 200
 
 @main.route('/control/test', methods=['POST'])
 def test():
@@ -111,3 +106,22 @@ def run_event():
     event_controller.run_watering_cycle()
     logger.info("Watering cycle started")
     return jsonify({"status": "success", "message": "Watering cycle started"}), 200
+
+@main.route('/config', methods=['GET'])
+def get_config():
+    return jsonify(config_manager.config)
+
+@main.route('/config', methods=['POST'])
+def update_config():
+    data = request.json
+    for key, value in data.items():
+        config_manager.set(key, value)
+    return jsonify({"status": "success", "message": "Configuration updated"}), 200
+
+@main.route('/config/reload', methods=['POST'])
+def reload_config():
+    logger.debug("Reloading configuration for all controllers")
+    water_nutrient_controller.reload_config()
+    event_controller.reload_config()
+    logger.info("Configuration reloaded for all controllers")
+    return jsonify({"status": "success", "message": "Configuration reloaded for all controllers"}), 200

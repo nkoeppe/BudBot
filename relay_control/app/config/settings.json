@@ -1,0 +1,64 @@
+{
+    "water_nutrient": {
+        "nutrient_pumps": {
+            "green": {
+                "pin": -1,
+                "flow_rate": 0.5
+            },
+            "red": {
+                "pin": -1,
+                "flow_rate": 0.5
+            },
+            "yellow": {
+                "pin": -1,
+                "flow_rate": 0.5
+            }
+        },
+        "water_pump": {
+            "pin": 16,
+            "flow_rate": 20
+        },
+        "distribution_pumps": [
+            {
+                "pin": 5,
+                "flow_rate": 30
+            },
+            {
+                "pin": 20,
+                "flow_rate": 30
+            },
+            {
+                "pin": 13,
+                "flow_rate": 30
+            },
+            {
+                "pin": 6,
+                "flow_rate": 30
+            },
+            {
+                "pin": 19,
+                "flow_rate": 30
+            }
+        ],
+        "fill_level_sensor": {
+            "pin": 26
+        },
+        "nutrient_amounts": {
+            "green": 50,
+            "red": 30,
+            "yellow": 20
+        },
+        "total_water_ml": 8000,
+        "ml_per_plant": 1000
+    },
+    "event": {
+        "moisture_sensors": {},
+        "moisture_thresholds": {},
+        "scheduled_events": [
+            {
+                "time_of_day": "13:35"
+            }
+        ]
+    }
+}
+                
