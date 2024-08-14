@@ -1,3 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 from datetime import datetime
 import time
 
@@ -14,22 +19,28 @@ class WaterNutrientController:
         :param relay_controller: Instance of RelayController used to control the relays.
         :param config: Configuration dictionary containing pump settings.
         """
+        logger.debug("Initializing WaterNutrientController")
         self.relay_controller = relay_controller
         self.nutrient_pumps = config.get('nutrient_pumps', {
             'green': {'pin': -1, 'flow_rate': 0.5},  # flow rate in ml/sec
             'red': {'pin': -1, 'flow_rate': 0.5},
             'yellow': {'pin': -1, 'flow_rate': 0.5}
         })
-        self.water_pump = config.get('water_pump', {'pin': -1, 'flow_rate': 50})  # flow rate in ml/sec
+        
+        self.water_pump = config.get('water_pump', {'pin': 16, 'flow_rate': 20})  # flow rate in ml/sec
+        
         self.distribution_pumps = config.get('distribution_pumps', [
-            {'pin': -1, 'flow_rate': 10},
-            {'pin': 20, 'flow_rate': 10},
-            {'pin': -1, 'flow_rate': 10},
-            {'pin': 5, 'flow_rate': 10},
-            {'pin': -1, 'flow_rate': 10}
+            {'pin': 5, 'flow_rate': 30},
+            {'pin': 20, 'flow_rate': 30},
+            {'pin': 13, 'flow_rate': 30},
+            {'pin': 6, 'flow_rate': 30},
+            {'pin': 19, 'flow_rate': 30}
         ])
+        
+        self.fill_level_sensor = config.get('fill_level_sensor', {'pin': 26})
+        logger.info("WaterNutrientController initialized")
 
-    def mix_nutrients(self, nutrient_amounts):
+    def mix_nutrients(self, nutrient_amounts={}):
         """
         Activates the nutrient pumps sequentially to mix the nutrients into the water.
         Each pump runs for a duration based on the specified amount in milliliters.
@@ -45,18 +56,18 @@ class WaterNutrientController:
             }
             controller.mix_nutrients(nutrient_amounts)
         """
-        print("Starting nutrient mixing...")
+        logger.debug("Mixing nutrients: %s", nutrient_amounts)
         for label, amount in nutrient_amounts.items():
-            if label in self.nutrient_pumps:
+            if label in self.nutrient_pumps and self.nutrient_pumps[label]['pin'] != -1:
                 pump = self.nutrient_pumps[label]
                 duration = amount / pump['flow_rate']
                 self.relay_controller.turn_on(pump['pin'])
                 time.sleep(duration)
                 self.relay_controller.turn_off(pump['pin'])
-                print(f"Added {amount} ml of {label} nutrient")
+                logger.info("Added %d ml of %s nutrient", amount, label)
             else:
-                print(f"Warning: Unknown nutrient label '{label}'")
-        print("Nutrient mixing complete.")
+                logger.warning("Unknown nutrient label '%s'", label)
+        logger.info("Nutrient mixing complete.")
 
     def fill_water_to_mixer(self, ml):
         """
@@ -65,11 +76,12 @@ class WaterNutrientController:
 
         :param ml: Amount of water to add in milliliters
         """
+        logger.debug("Filling water to mixer: %d ml", ml)
         if self.is_mixer_full():
-            print("Mixer is already full. No water added.")
+            logger.info("Mixer is already full. No water added.")
             return
 
-        print(f"Adding {ml} ml of water to mixer...")
+        logger.debug("Adding %d ml of water to mixer...", ml)
         self.relay_controller.turn_on(self.water_pump['pin'])
         
         start_time = time.time()
@@ -83,51 +95,70 @@ class WaterNutrientController:
         self.relay_controller.turn_off(self.water_pump['pin'])
         
         if self.is_mixer_full():
-            print(f"Mixer full. Added approximately {water_added:.2f} ml of water.")
+            logger.info("Mixer full. Added approximately %.2f ml of water.", water_added)
         elif water_added >= ml:
-            print(f"Added {ml} ml of water to mixer.")
+            logger.info("Added %d ml of water to mixer.", ml)
         else:
-            print(f"Filling stopped after 60 seconds. Added approximately {water_added:.2f} ml of water.")
+            logger.warning("Filling stopped after 60 seconds. Added approximately %.2f ml of water.", water_added)
 
-    def fill_mixer_with_water(self, total_ml=5000):
+    def fill_mixer_with_water(self, total_ml=8000):
         """
         Activates the water pump to fill the nutrient mixer with water.
         Uses the fill_water_to_mixer function to add water until the mixer is full or the total amount is reached.
 
         :param total_ml: Total amount of water to add in milliliters (default: 5000 ml)
         """
+        logger.debug("Filling mixer with water: %d ml", total_ml)
         if self.is_mixer_full():
-            print("Mixer is already full.")
+            logger.info("Mixer is already full.")
             return
 
-        print(f"Filling mixer with {total_ml} ml of water...")
+        logger.debug("Filling mixer with %d ml of water...", total_ml)
         water_added = 0
         while not self.is_mixer_full() and water_added < total_ml:
             remaining = min(1000, total_ml - water_added)
             self.fill_water_to_mixer(remaining)
             water_added += remaining
         
-        print(f"Mixer filled with {water_added} ml of water.")
-
+        logger.info("Mixer filled with %d ml of water.", water_added)
+        
     def is_mixer_full(self):
         """
         Checks the fill level sensor to determine if the mixer is full.
         """
-        # TODO: Implement the actual logic to read from the fill level sensor
-        # This is a placeholder and should be replaced with actual sensor reading
-        return False  # Replace with actual sensor reading
+        logger.debug("Checking if mixer is full")
+        fill_level_pin = self.fill_level_sensor['pin']  # Assuming this is defined in the class
+        
+        # Read the GPIO input
+        # is_full = self.pi.read(fill_level_pin) == 1  # Assuming 1 means full, 0 means not full
+        is_full = self.relay_controller.get_pin_state(fill_level_pin)
+        
+        logger.debug("Mixer full status: %s", is_full)
+        return is_full
 
-    def distribute_to_plants(self, ml_per_plant):
+    def distribute_to_plants(self, ml_per_plant=1000):
         """
         Activates the distribution pumps to deliver the nutrient solution to the plants.
         Each pump runs sequentially to ensure equal distribution.
 
         :param ml_per_plant: Amount of nutrient solution to distribute to each plant in milliliters
         """
-        print(f"Distributing {ml_per_plant} ml of nutrient solution to each plant...")
+        logger.debug("Distributing %d ml of nutrient solution to each plant", ml_per_plant)
         for pump in self.distribution_pumps:
             duration = ml_per_plant / pump['flow_rate']
             self.relay_controller.turn_on(pump['pin'])
             time.sleep(duration)
             self.relay_controller.turn_off(pump['pin'])
-        print("Distribution complete.")
+        logger.info("Distribution complete.")
+        
+    
+    def run_watering_cycle(self):
+        """
+        Runs the full watering and nutrient distribution cycle.
+        This includes mixing nutrients, filling the mixer with water, and distributing the solution to the plants.
+        """
+        logger.debug("Running watering cycle")
+        self.mix_nutrients({})
+        self.fill_mixer_with_water(8000)
+        self.distribute_to_plants(1000)
+        logger.info("Watering cycle complete.")

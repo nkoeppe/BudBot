@@ -1,14 +1,14 @@
-import RPi.GPIO as GPIO
 import time
 import logging
+from datetime import datetime
 
 # Pin configuration for the pump system on a Raspberry Pi 4B
-# Fertilizer pumps (3 pieces)
+# nutrients pumps (3 pieces)
 # Pump1 - GPIO17
 # Pump2 - GPIO18
 # Pump3 - GPIO27
 
-# Water-fertilizer-mixed pumps (5 pieces)
+# Water-nutrients-mixed pumps (5 pieces)
 # MixedPump1 - GPIO16
 # MixedPump2 - GPIO20
 # MixedPump3 - GPIO21
@@ -78,6 +78,7 @@ logger.addHandler(ch)
 
 class RelayController:
     def __init__(self):
+        logger.debug("Initializing RelayController")
         self.pi = pigpio.pi('gpio_deamon')  # Connect to local Pi.
 
         if not self.pi.connected:
@@ -85,74 +86,68 @@ class RelayController:
             exit()
             
         # Define the relay pins
-        self.fertilizer_pumps = [17, 18, 27]
-        self.water_fertilizer_mixed_pumps = [5, 6, 13, 16, 19, 20, 21, 26]
-        self.water_pump = [13]
-        self.light_pins = [12, 16]  # Example light pins
-
-        self.relay_pins = self.fertilizer_pumps + self.water_fertilizer_mixed_pumps + self.water_pump + self.light_pins
-        # self.relay_pins =  [ i for i in range(3, 28) ] #[2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 22, 23, 24, 25, 26]
-        self.device_pins = {
-            'fertilizer': self.fertilizer_pumps,
-            'water_fertilizer_mixed': self.water_fertilizer_mixed_pumps,
-            'water': self.water_pump,
-            'light': self.light_pins
-        }
-        
-        self.state = {pin: 'off' for pin in self.relay_pins}
-        for pin in self.relay_pins:
+  
+        for pin in range(2,28):
             self.pi.set_mode(pin, pigpio.OUTPUT)
             self.pi.write(pin, 1)  # Set to HIGH
-        logger.info("RelayController initialized with pins: %s", self.relay_pins)
-                
+        
+        for pin in [26]:
+            self.pi.set_mode(pin, pigpio.INPUT)
+            logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
+        
+        logger.info("RelayController initialized")
 
     def turn_on(self, pin):
-        if pin in self.relay_pins:
-            self.pi.write(pin, 0)  # Set to LOW
-            self.state[pin] = 'on'
-            logger.info("Turned on pin %d", pin)
-            return True
-        logger.warning("Attempted to turn on invalid pin %d", pin)
-        return False
+        logger.debug("Turning on pin %d", pin)
+        self.pi.write(pin, 0)  # Set to LOW
+        logger.info("Turned on pin %d", pin)
+        return True
 
     def turn_off(self, pin):
-        if pin in self.relay_pins:
-            self.pi.write(pin, 1)  # Set to HIGH
-            self.state[pin] = 'off'
-            logger.info("Turned off pin %d", pin)
-            return True
-        logger.warning("Attempted to turn off invalid pin %d", pin)
-        return False
+        logger.debug("Turning off pin %d", pin)
+        self.pi.write(pin, 1)  # Set to HIGH
+        logger.info("Turned off pin %d", pin)
+        return True
 
     def cleanup(self):
+        logger.debug("Cleaning up GPIO pins")
         for pin in self.relay_pins:
             self.pi.write(pin, 1)  # Set to HIGH
         logger.info("All relay pins reset to HIGH")
 
-    def get_pin(self, device, index):
-        device_pins = self.get_device_pins(device)
-        if device_pins and 0 <= index < len(device_pins):
-            return device_pins[index]
-        logger.warning("Invalid device or index: %s, %d", device, index)
-        return None
-
-    def get_device_pins(self, device):
-        return self.device_pins.get(device)
 
     def get_status(self):
-        return self.state
+        logger.debug("Getting GPIO status")
+        status = {}
+        for pin in range(2, 28):  # GPIO pins on Raspberry Pi 4B
+            mode = self.pi.get_mode(pin)
+            mode_str = 'INPUT' if mode == pigpio.INPUT else 'OUTPUT' if mode == pigpio.OUTPUT else 'UNKNOWN'
+            status[f'GPIO{pin}'] = {
+                'state': 'high' if self.get_pin_state(pin) == 1 else 'low',
+                'mode': mode_str,
+                'controlled': False
+            }
+        logger.info("GPIO status retrieved")
+        return {
+            'gpio_status': status,
+            'timestamp': datetime.now().isoformat()
+        }
 
-    def get_pin_status(self, pin):
-        return self.state.get(pin, 'unknown')
+    def get_pin_state(self, pin):
+        logger.debug("Getting state for pin %d", pin)
+        return self.pi.read(pin)
 
     def test(self):
+        logger.debug("Testing all relay pins")
         for pin in self.relay_pins:
             self.test_pin(pin)
+        logger.info("Test completed")
         return "Test completed"
     
     def test_pin(self, pin):
+        logger.debug("Testing pin %d", pin)
         self.pi.write(pin, 0)  # Set to LOW
-        time.sleep(2)
+        time.sleep(17)  # Sleep for exactly 10 seconds
         self.pi.write(pin, 1)  # Set to HIGH
-        logger.info("Test completed")
+        logger.info("Test completed for pin %d", pin)
         return "Test completed"
