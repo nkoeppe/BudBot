@@ -49,16 +49,11 @@
             "yellow": 20
         },
         "total_water_ml": 8000,
-        "ml_per_plant": 1000
+        "ml_per_plant": 10
     },
     "event": {
         "moisture_sensors": {},
         "moisture_thresholds": {},
-        "scheduled_events": [
-            {
-                "time_of_day": "13:35"
-            }
-        ]
+        "scheduled_events": []
     }
 }
-                

@@ -64,10 +64,12 @@ class EventController:
 
         :param time_of_day: String representing the time of day to start the watering process (in 24-hour format, e.g., '08:00').
         """
+        
         self.logger.debug("Scheduling daily watering at %s", time_of_day)
         schedule.every().day.at(time_of_day).do(self.water_nutrient_controller.run_watering_cycle)
-        self.scheduled_events.append({'time_of_day': time_of_day})
-        self.config_manager.set('scheduled_events', self.scheduled_events)
+        if {'time_of_day': time_of_day} not in self.scheduled_events:
+            self.scheduled_events.append({'time_of_day': time_of_day})
+            self.config_manager.set('event', {'scheduled_events': self.scheduled_events})
         self.logger.info("Scheduled daily watering at %s", time_of_day)
 
     def add_moisture_sensor(self, sensor_id, pin, threshold):
@@ -116,7 +118,7 @@ class EventController:
         """
         Checks all moisture sensors and triggers watering if below threshold.
         """
-        self.logger.debug("Checking moisture levels")
+        # self.logger.("Checking moisture levels")
         for sensor_id, sensor in self.moisture_sensors.items():
             moisture_level = sensor.read_moisture()
             self.logger.debug("Moisture level for sensor %s: %d", sensor_id, moisture_level)

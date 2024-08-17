@@ -64,12 +64,10 @@ class WaterNutrientController:
         gpio_output_pins = [pin for pin in gpio_output_pins if pin != -1]
         
         self.relay_controller.init_gpio_output(gpio_output_pins)
-        self.logger.debug("GPIOs Ouputs initialized: %s", gpio_output_pins)
         
         gpio_input_pins = [self.fill_level_sensor['pin']]
         gpio_input_pins = [pin for pin in gpio_input_pins if pin != -1]
         self.relay_controller.init_gpio_input(gpio_input_pins)
-        self.logger.debug("GPIOs Inputs initialized: %s", gpio_input_pins)
         
         
 

@@ -8,7 +8,6 @@ from app.controller.water_nutrient_controller import WaterNutrientController
 from app.controller.event_controller import EventController
 from app.config.config_manager import ConfigManager
 import uuid
-
 # Configure logger
 dictConfig({
     'version': 1,
@@ -22,11 +21,13 @@ dictConfig({
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'default',
+            'level': 'INFO',
         },
         'file': {
             'class': 'logging.FileHandler',
             'filename': 'app.log',
             'formatter': 'default',
+            'level': 'DEBUG',
         },
     },
     'root': {

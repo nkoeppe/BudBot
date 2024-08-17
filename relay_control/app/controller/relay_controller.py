@@ -85,20 +85,22 @@ class RelayController:
             self.pi.set_mode(pin, pigpio.OUTPUT)
             self.pi.write(pin, 1)  # Set to HIGH
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
-        
+        self.logger.debug("GPIOs Ouputs initialized: %s", pins)
+
     def init_gpio_input(self, pins):
         for pin in pins:
             self.pi.set_mode(pin, pigpio.INPUT)
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
-        
+        self.logger.debug("GPIOs Inputs initialized: %s", pins)
+
     def turn_on(self, pin):
-        self.logger.debug("Turning on pin %d", pin)
+        # self.logger.debug("Turning on pin %d", pin)
         self.pi.write(pin, 0)  # Set to LOW
         self.logger.info("Turned on pin %d", pin)
         return True
 
     def turn_off(self, pin):
-        self.logger.debug("Turning off pin %d", pin)
+        # self.logger.debug("Turning off pin %d", pin)
         self.pi.write(pin, 1)  # Set to HIGH
         self.logger.info("Turned off pin %d", pin)
         return True
