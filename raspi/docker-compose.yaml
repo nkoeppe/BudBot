@@ -1,0 +1,72 @@
+services:
+  relay_control:
+    image: relay_control:latest
+    build:
+      context: ./relay_control
+      dockerfile: Dockerfile
+    container_name: relay_control
+    privileged: true
+    environment:
+      - CONTROL_CONFIG=/config/control_config.json
+      - PYTHONPATH=/app
+    volumes:
+      - ./relay_control:/app
+    ports:
+      - 5000:5000
+    restart: always
+
+  gpio_deamon:
+    image: zinen2/alpine-pigpiod:latest
+    container_name: gpio_deamon
+    privileged: true
+    ports:
+      - 8888:8888
+    restart: always
+
+  serial-proxy:
+    build: ./serial-proxy
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    depends_on:
+      - mqtt
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto-data:/mosquitto/data
+      - ./mosquitto-log:/mosquitto/log
+
+
+  # influxdb:
+  #   image: influxdb
+  #   ports:
+  #     - "8086:8086"
+  #   volumes:
+  #     - ./influxdb-data:/var/lib/influxdb
+
+  # grafana:
+  #   image: grafana/grafana
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - influxdb
+  #   volumes:
+  #     - grafana-storage:/var/lib/grafana
+
+  # telegraf:
+  #   build: telegraf:latest
+  #   depends_on:
+  #     - mqtt
+  #     - influxdb
+  #   volumes:
+  #     - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+
+volumes:
+  grafana-storage:
+  influxdb-data:
+  mosquitto-data:
+  mosquitto-log:
