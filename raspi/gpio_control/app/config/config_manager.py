@@ -46,9 +46,16 @@ class ConfigManager:
     def save_config(self):
         with open(self.config_file, 'w') as file:
             json.dump(self.config, file, indent=4)
-
     def get(self, key, default=None):
-        return self.config.get(key, default)
+        keys = key.split('.')
+        config_section = self.config
+
+        for k in keys:
+            if k not in config_section:
+                return default  # Return default if the key doesn't exist
+            config_section = config_section[k]
+
+        return config_section
 
     def set(self, key, value):
         keys = key.split('.')
@@ -61,7 +68,6 @@ class ConfigManager:
 
         config_section[keys[-1]] = value
         self.save_config()
-        
         
     def add_to_array(self, key, value):
         keys = key.split('.')

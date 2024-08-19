@@ -1,16 +1,18 @@
 services:
-  relay_control:
-    image: relay_control:latest
+  gpio_control:
+    image: nkoeppe/gpio_control:latest
     build:
-      context: ./relay_control
+      context: ./gpio_control
       dockerfile: Dockerfile
-    container_name: relay_control
+    container_name: gpio_control
     privileged: true
     environment:
       - CONTROL_CONFIG=/config/control_config.json
       - PYTHONPATH=/app
     volumes:
-      - ./relay_control:/app
+      - ./gpio_control:/app
+    devices:
+      - "/dev/ttyACM0:/dev/ttyACM0"
     ports:
       - 5000:5000
     restart: always
@@ -23,10 +25,12 @@ services:
       - 8888:8888
     restart: always
 
-  serial-proxy:
-    build: ./serial-proxy
+  serial_proxy:
+    build: ./serial_proxy
+    volumes:
+      - ./serial_proxy:/app
     devices:
-      - "/dev/ttyUSB0:/dev/ttyUSB0"
+      - "/dev/ttyACM0:/dev/ttyUSB0"
     depends_on:
       - mqtt
 
@@ -36,37 +40,50 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto-data:/mosquitto/data
-      - ./mosquitto-log:/mosquitto/log
+      - ./mosquitto-conf:/mosquitto/config
 
 
-  # influxdb:
-  #   image: influxdb
+  influxdb:
+    image: influxdb:latest
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=myuser
+      - DOCKER_INFLUXDB_INIT_PASSWORD=mypassword
+      - DOCKER_INFLUXDB_INIT_ORG=myorg
+      - DOCKER_INFLUXDB_INIT_BUCKET=sensors
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+
+  telegraf:
+    image: telegraf:latest
+    depends_on:
+      - mqtt
+      - influxdb
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      - INFLUX_TOKEN=-bIb9lFQDw74ylUkbVnNGPr5ISblu2XovqMus8XTK9Zl9XcA_SbVqEG5It3lbhZEM_k6W5zr574yjw7QrW6KYQ==
+
+  grafana:
+    image: grafana/grafana-enterprise
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      
+  # frontend:
+  #   build: ./frontend
+  #   container_name: frontend
   #   ports:
-  #     - "8086:8086"
-  #   volumes:
-  #     - ./influxdb-data:/var/lib/influxdb
-
-  # grafana:
-  #   image: grafana/grafana
-  #   ports:
-  #     - "3000:3000"
+  #     - "8080:80"
   #   depends_on:
-  #     - influxdb
-  #   volumes:
-  #     - grafana-storage:/var/lib/grafana
-
-  # telegraf:
-  #   build: telegraf:latest
-  #   depends_on:
-  #     - mqtt
-  #     - influxdb
-  #   volumes:
-  #     - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
-
+  #     - gpio_control
 
 volumes:
   grafana-storage:
   influxdb-data:
-  mosquitto-data:
-  mosquitto-log:

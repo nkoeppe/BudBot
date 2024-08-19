@@ -5,6 +5,7 @@ logger.setLevel(logging.DEBUG)
 
 from flask import Blueprint, jsonify, request
 from app.config.config_manager import ConfigManager
+from app.config.plant_manager import PlantManager
 
 main = Blueprint('main', __name__)
 config_manager = ConfigManager()
@@ -13,12 +14,16 @@ config_manager = ConfigManager()
 relay_controller = None
 water_nutrient_controller = None
 event_controller = None
+sensor_hub_controller = None 
+plant_manager = None
 
-def set_controllers(relay, water_nutrient, event):
-    global relay_controller, water_nutrient_controller, event_controller
+def set_controllers(relay, water_nutrient, event, sensor_hub, plant):
+    global relay_controller, water_nutrient_controller, event_controller, sensor_hub_controller, plant_manager
     relay_controller = relay
     water_nutrient_controller = water_nutrient
     event_controller = event
+    sensor_hub_controller = sensor_hub
+    plant_manager = plant
 
 @main.route('/')
 def index():
@@ -125,3 +130,199 @@ def reload_config():
     event_controller.reload_config()
     logger.info("Configuration reloaded for all controllers")
     return jsonify({"status": "success", "message": "Configuration reloaded for all controllers"}), 200
+
+
+
+@main.route('/sensor-hub/read', methods=['GET'])
+def read_sensor():
+    logger.debug("Reading sensor data")
+    data = sensor_hub_controller.get_latest_sensor_data()
+    return jsonify({"status": "success", "data": data}), 200
+
+@main.route('/sensor-hub/send-command', methods=['POST'])
+def request_sensor_data():
+    logger.debug("Sending command to sensor hub")
+    command = request.json.get('command', 'GET_DATA')
+    sensor_hub_controller.send_command(command)
+    logger.info("Sent command to sensor hub: %s", command)
+    return jsonify({"status": "success", "message": f"Command sent to sensor hub: {command}"}), 200
+
+
+@main.route('/sensor-hub/subscribe', methods=['POST'])
+def subscribe_topic():
+    logger.debug("Subscribing to new topic")
+    topic = request.json.get('topic')
+    if topic:
+        sensor_hub_controller.subscribe_topic(topic)
+        logger.info("Subscribed to topic: %s", topic)
+        return jsonify({"status": "success", "message": f"Subscribed to topic: {topic}"}), 200
+    else:
+        return jsonify({"status": "error", "message": "No topic provided"}), 400
+
+@main.route('/sensor-hub/unsubscribe', methods=['POST'])
+def unsubscribe_topic():
+    logger.debug("Unsubscribing from topic")
+    topic = request.json.get('topic')
+    if topic:
+        sensor_hub_controller.unsubscribe_topic(topic)
+        logger.info("Unsubscribed from topic: %s", topic)
+        return jsonify({"status": "success", "message": f"Unsubscribed from topic: {topic}"}), 200
+    else:
+        return jsonify({"status": "error", "message": "No topic provided"}), 400
+
+@main.route('/sensor-hub/subscriptions', methods=['GET'])
+def get_subscriptions():
+    logger.debug("Getting subscribed topics")
+    topics = sensor_hub_controller.get_subscribed_topics()
+    return jsonify({"status": "success", "topics": topics}), 200
+
+
+@main.route('/sensor-hub/calibrate', methods=['POST'])
+def calibrate_sensor():
+    logger.debug("Starting sensor calibration")
+    sensor_id = request.json.get('sensor_id')
+    calibration_time = request.json.get('calibration_time', 60)
+    delay = request.json.get('delay', 1)
+    
+    if not sensor_id:
+        return jsonify({"status": "error", "message": "No sensor_id provided"}), 400
+    
+    sensor_hub_controller.calibrate_sensor_auto(sensor_id, int(calibration_time), int(delay))
+    logger.info(f"Calibration completed for sensor {sensor_id}")
+    return jsonify({"status": "success", "message": f"Calibration completed for sensor {sensor_id}"}), 200
+
+@main.route('/sensor-hub/sensors', methods=['GET'])
+def get_sensors():
+    logger.debug("Getting all sensors")
+    sensors = sensor_hub_controller.get_sensors()
+    return jsonify({"status": "success", "sensors": sensors}), 200
+
+@main.route('/sensor-hub/sensors', methods=['POST'])
+def add_sensor():
+    logger.debug("Adding new sensor")
+    sensor_data = request.json
+    if not sensor_data or 'pin' not in sensor_data or 'type' not in sensor_data or 'id' not in sensor_data:
+        return jsonify({"status": "error", "message": "Invalid sensor data"}), 400
+    
+    success = sensor_hub_controller.add_sensor(f"{sensor_data['type']}_{sensor_data['id']}", sensor_data)
+    if success:
+        logger.info(f"Added new sensor: {sensor_data['type']}_{sensor_data['id']}")
+        return jsonify({"status": "success", "message": f"Sensor {sensor_data['type']}_{sensor_data['id']} added successfully"}), 201
+    else:
+        return jsonify({"status": "error", "message": "Failed to add sensor"}), 500
+
+@main.route('/sensor-hub/sensors/<label>', methods=['DELETE'])
+def remove_sensor(label):
+    logger.debug(f"Removing sensor: {label}")
+    success = sensor_hub_controller.remove_sensor(label)
+    if success:
+        logger.info(f"Removed sensor: {label}")
+        return jsonify({"status": "success", "message": f"Sensor {label} removed successfully"}), 200
+    else:
+        return jsonify({"status": "error", "message": f"Sensor {label} not found"}), 404
+
+@main.route('/sensor-hub/sensors/<label>/calibrate', methods=['POST'])
+def calibrate_specific_sensor(label):
+    logger.debug(f"Calibrating sensor: {label}")
+    calibration_time = request.json.get('calibration_time', 60)
+    delay = request.json.get('delay', 1)
+    
+    if not label:
+        return jsonify({"status": "error", "message": "No sensor label provided"}), 400
+    
+    sensor_hub_controller.calibrate_sensor_auto(label, int(calibration_time), int(delay))
+    logger.info(f"Calibration completed for sensor {label}")
+    return jsonify({"status": "success", "message": f"Calibration completed for sensor {label}"}), 200
+
+@main.route('/sensor-hub/sensors/<label>/calibration', methods=['GET'])
+def get_sensor_calibration(label):
+    logger.debug(f"Getting calibration for sensor: {label}")
+    calibration = sensor_hub_controller.get_calibration(label)
+    if calibration:
+        return jsonify({"status": "success", "calibration": calibration}), 200
+    else:
+        return jsonify({"status": "error", "message": f"Calibration not found for sensor {label}"}), 404
+
+@main.route('/sensor-hub/clear-all', methods=['POST'])
+def clear_all():
+    logger.debug(f"Clearing all sensors and settings")
+    sensor_hub_controller.clear_all()
+    return jsonify({"status": "success", "message": "Cleared all sensors and settings"}), 200
+
+@main.route('/plants', methods=['GET'])
+def get_all_plants():
+    logger.debug("Getting all plants")
+    plants = plant_manager.get_all_plants()
+    return jsonify({"status": "success", "plants": plants}), 200
+
+@main.route('/plants', methods=['POST'])
+def add_plant():
+    logger.debug("Adding new plant")
+    data = request.json
+    if not data or 'plant_id' not in data or 'moisture_sensor_id' not in data or 'water_pump_id' not in data:
+        return jsonify({"status": "error", "message": "Invalid plant data"}), 400
+    
+    plant_manager.add_plant(data['plant_id'], data['moisture_sensor_id'], data['water_pump_id'])
+    logger.info(f"Added new plant: {data['plant_id']}")
+    return jsonify({"status": "success", "message": f"Plant {data['plant_id']} added successfully"}), 201
+
+@main.route('/plants/<plant_id>', methods=['GET'])
+def get_plant(plant_id):
+    logger.debug(f"Getting plant: {plant_id}")
+    plant = plant_manager.get_plant(plant_id)
+    if plant:
+        return jsonify({"status": "success", "plant": plant}), 200
+    else:
+        return jsonify({"status": "error", "message": f"Plant {plant_id} not found"}), 404
+
+
+@main.route('/plants/<plant_id>', methods=['PUT'])
+def update_plant(plant_id):
+    logger.debug(f"Updating plant: {plant_id}")
+    data = request.json
+    if not data:
+        return jsonify({"status": "error", "message": "No update data provided"}), 400
+    
+    plant_manager.update_plant(plant_id, data.get('moisture_sensor_id'), data.get('water_pump_id'))
+    logger.info(f"Updated plant: {plant_id}")
+    return jsonify({"status": "success", "message": f"Plant {plant_id} updated successfully"}), 200
+
+@main.route('/plants/<plant_id>', methods=['DELETE'])
+def remove_plant(plant_id):
+    logger.debug(f"Removing plant: {plant_id}")
+    plant_manager.remove_plant(plant_id)
+    logger.info(f"Removed plant: {plant_id}")
+    return jsonify({"status": "success", "message": f"Plant {plant_id} removed successfully"}), 200
+
+@main.route('/plants/by-sensor/<sensor_id>', methods=['GET'])
+def get_plant_by_sensor(sensor_id):
+    logger.debug(f"Getting plant by sensor: {sensor_id}")
+    plant_id, plant_data = plant_manager.get_plant_by_sensor(sensor_id)
+    if plant_id:
+        return jsonify({"status": "success", "plant_id": plant_id, "plant_data": plant_data}), 200
+    else:
+        return jsonify({"status": "error", "message": f"No plant found for sensor {sensor_id}"}), 404
+
+@main.route('/plants/by-pump/<pump_id>', methods=['GET'])
+def get_plant_by_pump(pump_id):
+    logger.debug(f"Getting plant by pump: {pump_id}")
+    plant_id, plant_data = plant_manager.get_plant_by_pump(pump_id)
+    if plant_id:
+        return jsonify({"status": "success", "plant_id": plant_id, "plant_data": plant_data}), 200
+    else:
+        return jsonify({"status": "error", "message": f"No plant found for pump {pump_id}"}), 404
+
+@main.route('/event/moisture-check-interval', methods=['GET', 'POST'])
+def moisture_check_interval():
+    if request.method == 'POST':
+        interval = request.json.get('interval')
+        if interval is not None and isinstance(interval, (int, float)) and interval > 0:
+            event_controller.moisture_check_interval = interval
+            config_manager.set('event.moisture_check_interval', interval)
+            logger.info(f"Moisture check interval updated to {interval} seconds")
+            return jsonify({"status": "success", "message": f"Moisture check interval updated to {interval} seconds"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Invalid interval value"}), 400
+    else:
+        interval = event_controller.moisture_check_interval
+        return jsonify({"status": "success", "interval": interval}), 200

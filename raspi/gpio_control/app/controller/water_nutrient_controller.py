@@ -44,13 +44,13 @@ class WaterNutrientController:
         
         self.water_pump = config.get('water_pump', {'pin': 16, 'flow_rate': 20})  # flow rate in ml/sec
         
-        self.distribution_pumps = config.get('distribution_pumps', [
-            {'pin': 5, 'flow_rate': 30},
-            {'pin': 20, 'flow_rate': 30},
-            {'pin': 13, 'flow_rate': 30},
-            {'pin': 6, 'flow_rate': 30},
-            {'pin': 19, 'flow_rate': 30}
-        ])
+        self.distribution_pumps = config.get('distribution_pumps', {
+            'pump_1': {'pin': 5, 'flow_rate': 30},
+            'pump_2': {'pin': 20, 'flow_rate': 30},
+            'pump_3': {'pin': 13, 'flow_rate': 30},
+            'pump_4': {'pin': 6, 'flow_rate': 30},
+            'pump_5': {'pin': 19, 'flow_rate': 30}
+        })
         
         self.fill_level_sensor = config.get('fill_level_sensor', {'pin': 26})
         self.nutrient_amounts = config.get('nutrient_amounts', {'green': 50, 'red': 30, 'yellow': 20})
@@ -60,7 +60,7 @@ class WaterNutrientController:
         
         gpio_output_pins = [pump['pin'] for pump in self.nutrient_pumps.values()]
         gpio_output_pins.append(self.water_pump['pin'])
-        gpio_output_pins.extend([pump['pin'] for pump in self.distribution_pumps])
+        gpio_output_pins.extend([pump['pin'] for pump in self.distribution_pumps.values()])
         gpio_output_pins = [pin for pin in gpio_output_pins if pin != -1]
         
         self.relay_controller.init_gpio_output(gpio_output_pins)
@@ -195,13 +195,35 @@ class WaterNutrientController:
             ml_per_plant = self.ml_per_plant
 
         self.logger.debug("Distributing %d ml of nutrient solution to each plant", ml_per_plant)
-        for pump in self.distribution_pumps:
+        for plant_id, pump in self.distribution_pumps.items():
             duration = ml_per_plant / pump['flow_rate']
             self.relay_controller.turn_on(pump['pin'])
             time.sleep(duration)
             self.relay_controller.turn_off(pump['pin'])
-        self.logger.info("Distribution complete.")
+            self.logger.info("Distribution complete for plant: %s", plant_id)
+        self.logger.info("Distribution complete for all plants.")
         
+    def distribute_to_plant(self, plant_id, ml=None):
+        """
+        Activates the distribution pump for a specific plant to deliver the nutrient solution.
+        
+        :param plant_id: The ID of the plant to distribute the nutrient solution to
+        :param ml: Amount of nutrient solution to distribute to the plant in milliliters
+        """
+        if ml is None:
+            ml = self.ml_per_plant
+
+        self.logger.debug("Distributing %d ml of nutrient solution to plant: %s", ml, plant_id)
+        if plant_id in self.distribution_pumps:
+            pump = self.distribution_pumps[plant_id]
+            duration = ml / pump['flow_rate']
+            self.relay_controller.turn_on(pump['pin'])
+            time.sleep(duration)
+            self.relay_controller.turn_off(pump['pin'])
+            self.logger.info("Distribution complete for plant: %s", plant_id)
+        else:
+            self.logger.warning("No distribution pump found for plant: %s", plant_id)
+
     def run_watering_cycle(self):
         """
         Runs the full watering and nutrient distribution cycle.
@@ -212,6 +234,17 @@ class WaterNutrientController:
         self.fill_mixer_with_water()
         self.distribute_to_plants()
         self.logger.info("Watering cycle complete.")
+
+    def run_watering_cycle_for_plant(self, plant_id):
+        """
+        Runs the full watering and nutrient distribution cycle for a specific plant.
+        This includes mixing nutrients, filling the mixer with water, and distributing the solution to the plants.
+        """
+        self.logger.debug("Running watering cycle for plant: %s", plant_id)
+        self.mix_nutrients()
+        self.fill_mixer_with_water()
+        self.distribute_to_plant(plant_id)
+        self.logger.info("Watering cycle complete for plant: %s", plant_id)
 
     def reload_config(self):
         self.logger.debug("Reloading configuration for WaterNutrientController")

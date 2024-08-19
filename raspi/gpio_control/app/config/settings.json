@@ -18,28 +18,28 @@
             "pin": 16,
             "flow_rate": 20
         },
-        "distribution_pumps": [
-            {
+        "distribution_pumps": {
+            "pump_1": {
                 "pin": 5,
                 "flow_rate": 30
             },
-            {
+            "pump_2": {
                 "pin": 20,
                 "flow_rate": 30
             },
-            {
+            "pump_3": {
                 "pin": 13,
                 "flow_rate": 30
             },
-            {
+            "pump_4": {
                 "pin": 6,
                 "flow_rate": 30
             },
-            {
+            "pump_5": {
                 "pin": 19,
                 "flow_rate": 30
             }
-        ],
+        },
         "fill_level_sensor": {
             "pin": 26
         },
@@ -54,6 +54,50 @@
     "event": {
         "moisture_sensors": {},
         "moisture_thresholds": {},
-        "scheduled_events": []
+        "scheduled_events": [],
+        "moisture_check_interval": 15
+    },
+    "sensor_hub": {
+        "subscribed_topics": [
+            "sensor/soil_moisture"
+        ],
+        "sensors": {
+            "soil_moisture_0": {
+                "pin": 0,
+                "type": "soil_moisture",
+                "id": 0,
+                "configuration": {
+                    "dry_value": 507.0,
+                    "wet_value": 466.0
+                }
+            },
+            "soil_moisture_1": {
+                "pin": 1,
+                "type": "soil_moisture",
+                "id": 1
+            },
+            "soil_moisture_2": {
+                "pin": 2,
+                "type": "soil_moisture",
+                "id": 2
+            },
+            "soil_moisture_3": {
+                "pin": 3,
+                "type": "soil_moisture",
+                "id": 3
+            },
+            "soil_moisture_4": {
+                "pin": 4,
+                "type": "soil_moisture",
+                "id": 4
+            }
+        },
+        "interval": 10000
+    },
+    "plants": {
+        "plant_1": {
+            "moisture_sensor_id": "soil_moisture_0",
+            "water_pump_id": "pump_1"
+        }
     }
 }

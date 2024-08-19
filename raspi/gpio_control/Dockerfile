@@ -28,5 +28,12 @@ EXPOSE 80
 ENV NAME World
 ENV PYTHONPATH /app
 
-# Run app.py when the container launches
-CMD ["python", "-m", "app.main"]
+# Install watchdog for file monitoring
+RUN pip install watchdog
+
+# Copy the start script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Set the entry point to the start script
+ENTRYPOINT ["/app/start.sh"]

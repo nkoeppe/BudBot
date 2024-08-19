@@ -5,9 +5,12 @@ from flask import Flask, request, session
 from app.api.controllers import main as main_blueprint, set_controllers
 from app.controller.relay_controller import RelayController
 from app.controller.water_nutrient_controller import WaterNutrientController
+from app.controller.sensor_hub_controller import SensorHubController
 from app.controller.event_controller import EventController
 from app.config.config_manager import ConfigManager
 import uuid
+from app.config.plant_manager import PlantManager
+
 # Configure logger
 dictConfig({
     'version': 1,
@@ -39,6 +42,7 @@ dictConfig({
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 config_manager = ConfigManager()
+plant_manager = PlantManager(config_manager)
 
 @app.before_request
 def before_request():
@@ -62,12 +66,13 @@ async def main():
     logger.debug("Starting main function")
     logger.debug("Initializing controllers")
     relay_controller = RelayController(logger)
-    water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger)
-    event_controller = EventController(water_nutrient_controller, config_manager, logger)
+    water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger)   
+    sensor_hub_controller = SensorHubController(logger, config_manager)
+    event_controller = EventController(water_nutrient_controller, config_manager, logger, plant_manager, sensor_hub_controller)
     logger.info("Controllers initialized")
 
     # Set instances in the controllers module
-    set_controllers(relay_controller, water_nutrient_controller, event_controller)
+    set_controllers(relay_controller, water_nutrient_controller, event_controller, sensor_hub_controller, plant_manager)
     # Register the Blueprint
     app.register_blueprint(main_blueprint, url_prefix='/api')
 
