@@ -82,6 +82,14 @@ def distribute_to_plants():
     logger.info("Distributed %d ml to each plant", ml_per_plant)
     return jsonify({"status": "success", "message": f"Distributed {ml_per_plant} ml to each plant"}), 200
 
+@main.route('/water-nutrient/distribute/<plant_id>', methods=['POST'])
+def distribute_to_plant(plant_id):
+    logger.debug("Distributing nutrients to plant: %s", plant_id)
+    ml_per_plant = request.json.get('ml_per_plant', 100)
+    water_nutrient_controller.distribute_to_plant(plant_id, ml_per_plant)
+    logger.info("Distributed %d ml to plant: %s", ml_per_plant, plant_id)
+    return jsonify({"status": "success", "message": f"Distributed {ml_per_plant} ml to plant: {plant_id}"}), 200
+
 @main.route('/water-nutrient/mixer-status', methods=['GET'])
 def mixer_status():
     logger.debug("Getting mixer status")
@@ -259,10 +267,16 @@ def get_all_plants():
 def add_plant():
     logger.debug("Adding new plant")
     data = request.json
-    if not data or 'plant_id' not in data or 'moisture_sensor_id' not in data or 'water_pump_id' not in data:
+    if not data or 'plant_id' not in data or 'moisture_sensor_id' not in data or 'water_pump_id' not in data or 'start_watering_threshold' not in data or 'stop_watering_threshold' not in data:
         return jsonify({"status": "error", "message": "Invalid plant data"}), 400
     
-    plant_manager.add_plant(data['plant_id'], data['moisture_sensor_id'], data['water_pump_id'])
+    plant_manager.add_plant(
+        data['plant_id'],
+        data['moisture_sensor_id'],
+        data['water_pump_id'],
+        data['start_watering_threshold'],
+        data['stop_watering_threshold']
+    )
     logger.info(f"Added new plant: {data['plant_id']}")
     return jsonify({"status": "success", "message": f"Plant {data['plant_id']} added successfully"}), 201
 
@@ -283,7 +297,13 @@ def update_plant(plant_id):
     if not data:
         return jsonify({"status": "error", "message": "No update data provided"}), 400
     
-    plant_manager.update_plant(plant_id, data.get('moisture_sensor_id'), data.get('water_pump_id'))
+    plant_manager.update_plant(
+        plant_id,
+        data.get('moisture_sensor_id'),
+        data.get('water_pump_id'),
+        data.get('start_watering_threshold'),
+        data.get('stop_watering_threshold')
+    )
     logger.info(f"Updated plant: {plant_id}")
     return jsonify({"status": "success", "message": f"Plant {plant_id} updated successfully"}), 200
 

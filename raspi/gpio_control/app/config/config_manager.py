@@ -37,6 +37,16 @@ class ConfigManager:
                     "moisture_sensors": {},
                     "moisture_thresholds": {},
                     "scheduled_events": []
+                },
+                "plants": {
+                    "plant_1": {
+                        "moisture_sensor_id": "soil_moisture_0",
+                        "water_pump_id": "pump_1",
+                        "watering_threshold": {
+                            "start_watering": 30,
+                            "stop_watering": 70
+                        }
+                    },
                 }
             }
             with open(self.config_file, 'w') as file:

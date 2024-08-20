@@ -66,8 +66,8 @@ async def main():
     logger.debug("Starting main function")
     logger.debug("Initializing controllers")
     relay_controller = RelayController(logger)
-    water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger)   
     sensor_hub_controller = SensorHubController(logger, config_manager)
+    water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger, plant_manager, sensor_hub_controller)   
     event_controller = EventController(water_nutrient_controller, config_manager, logger, plant_manager, sensor_hub_controller)
     logger.info("Controllers initialized")
 
@@ -87,8 +87,8 @@ async def main():
 
     # Run Flask and event monitoring concurrently
     await asyncio.gather(
-        run_flask(),
-        monitor_events()
+        monitor_events(),
+        run_flask()
     )
 
 if __name__ == '__main__':

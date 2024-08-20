@@ -41,8 +41,10 @@ class SensorHubController:
         for label, sensor in sensors.items():
             self.add_sensor(label, sensor)
         interval = self.config_manager.get('sensor_hub.interval', 5000)
-        self.send_command(f"SET_INTERVAL {interval}")
+        self.set_interval(interval)
 
+    def set_interval(self, interval):
+        self.send_command(f"SET_INTERVAL {interval}")
 
     def add_sensor(self, label, sensor):
         self.logger.debug(f"Adding sensor: {label}")
@@ -66,8 +68,10 @@ class SensorHubController:
             del sensors[label]
             self.config_manager.set('sensor_hub.sensors', sensors)
             self.logger.debug(f"Removed sensor from config: {label}")
+            return True
         else:
             self.logger.warning(f"Attempted to remove non-existent sensor: {label}")
+        return False
         
     def subscribe_topic(self, topic):
         self.logger.debug(f"Subscribing to topic: {topic}")
@@ -179,10 +183,10 @@ class SensorHubController:
 
         sensor = sensors[label]
         # topic = f"{measurement}/{sensor_id}]"
-        topic = f"{sensor['type']}/{sensor['id']}"
+        topic = f"{sensor['type']}_{sensor['id']}"
 
         # Set the sampling interval on the Arduino
-        self.send_command(f"SET_INTERVAL {delay * 1000}")  # Convert seconds to milliseconds
+        self.set_interval({delay * 500})  # Convert seconds to milliseconds
         
         readings = set()
         start_time = time.time()
@@ -207,7 +211,7 @@ class SensorHubController:
             self.logger.error(f"No valid readings obtained for sensor {label} during auto-calibration")
 
         # Reset the sampling interval on the Arduino to default (if needed)
-        self.send_command("SET_INTERVAL 5000")  # Reset to 5 seconds, adjust as needed
+        self.set_interval(self.config_manager.get('sensor_hub.interval', 5000))  # Reset to 5 seconds, adjust as needed
         
     def on_message(self, client, userdata, message):
         raw_data = message.payload.decode('utf-8')
@@ -269,6 +273,14 @@ class SensorHubController:
         :return: The last received sensor data.
         """
         return self.last_sensor_data
+
+    def get_latest_sensor_data_by_sensor_id(self, sensor_id):
+        """
+        Returns the last received sensor data.
+
+        :return: The last received sensor data.
+        """
+        return self.last_sensor_data.get(sensor_id)
 
     def get_sensors(self):
         """

@@ -124,7 +124,6 @@ class RelayController:
         }
 
     def get_pin_state(self, pin):
-        self.logger.debug("Getting state for pin %d", pin)
         state = self.pi.read(pin)
         self.logger.debug("State for pin %d: %d", pin, state)
         return state
@@ -139,7 +138,7 @@ class RelayController:
     def test_pin(self, pin):
         self.logger.debug("Testing pin %d", pin)
         self.pi.write(pin, 0)  # Set to LOW
-        time.sleep(17)  # Sleep for exactly 10 seconds
+        time.sleep(1)  # Sleep for exactly 10 seconds
         self.pi.write(pin, 1)  # Set to HIGH
         self.logger.info("Test completed for pin %d", pin)
         return "Test completed"
