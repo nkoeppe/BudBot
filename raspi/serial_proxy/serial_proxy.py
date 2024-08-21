@@ -102,6 +102,10 @@ def on_message(client, userdata, message):
         command = message.payload.decode('utf-8')
         if command == "REQUEST_DATA":
             ser.write(b'GET_DATA\n')
+        elif command == "RESTART":
+            ser.setDTR(False)
+            time.sleep(1)
+            ser.setDTR(True)
         else:
             ser.write(command.encode('utf-8') + b'\n')
     except Exception as e:

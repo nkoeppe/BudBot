@@ -1,7 +1,9 @@
+from math import ceil
 from paho.mqtt import client as mqtt_client
 import threading
 import time
 import json
+from collections import deque
 
 class SensorHubController:
     def __init__(self, logger, config_manager, mqtt_broker="mqtt", mqtt_port=1883):
@@ -12,6 +14,8 @@ class SensorHubController:
         self.mqtt_port = mqtt_port
         self.running = False
         self.last_sensor_data = {}
+        self.sensor_readings = {}  # Dictionary to store the last n readings for each sensor
+        self.max_readings = self.config_manager.get('sensor_hub.max_readings', 10)  # Get max_readings from config
         self.subscribed_topics = []  # Keep track of subscribed topics
 
         self.logger.debug("Initializing SensorHubController with MQTT broker: %s, port: %d", mqtt_broker, mqtt_port)
@@ -40,8 +44,7 @@ class SensorHubController:
         sensors = self.config_manager.get('sensor_hub.sensors', {})
         for label, sensor in sensors.items():
             self.add_sensor(label, sensor)
-        interval = self.config_manager.get('sensor_hub.interval', 5000)
-        self.set_interval(interval)
+        self.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.max_readings))
 
     def set_interval(self, interval):
         self.send_command(f"SET_INTERVAL {interval}")
@@ -186,13 +189,13 @@ class SensorHubController:
         topic = f"{sensor['type']}_{sensor['id']}"
 
         # Set the sampling interval on the Arduino
-        self.set_interval({delay * 500})  # Convert seconds to milliseconds
+        self.set_interval(ceil((delay * 500)/self.max_readings))  # Convert seconds to milliseconds
         
         readings = set()
         start_time = time.time()
         
         while time.time() - start_time < calibration_time:
-            last_sensor_data = self.last_sensor_data.get(topic)
+            last_sensor_data = self.get_latest_sensor_data_by_sensor_id(topic)
             self.logger.info(f"Last sensor data: {last_sensor_data}")
             if last_sensor_data and 'value' in last_sensor_data:
                 try:
@@ -211,7 +214,7 @@ class SensorHubController:
             self.logger.error(f"No valid readings obtained for sensor {label} during auto-calibration")
 
         # Reset the sampling interval on the Arduino to default (if needed)
-        self.set_interval(self.config_manager.get('sensor_hub.interval', 5000))  # Reset to 5 seconds, adjust as needed
+        self.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.max_readings))  # Reset to 5 seconds, adjust as needed
         
     def on_message(self, client, userdata, message):
         raw_data = message.payload.decode('utf-8')
@@ -230,12 +233,44 @@ class SensorHubController:
                 
             sensor_data_label = f"{measurement}_{sensor_id}"
             percentage = self.convert_to_percentage(sensor_data_label, float(data['value']))
-            self.last_sensor_data[f"{sensor_data_label}"] = {"percentage": percentage, "last_updated_at": time.time(), **data}
+            self.update_sensor_readings(sensor_data_label, percentage, **data)
             self.logger.debug(f"Sensor {sensor_id} data: {self.last_sensor_data[sensor_data_label]}")
         except ValueError as err:
             self.logger.error(f"Invalid sensor data received for measurement {measurement} on sensor {measurement}: {raw_data}")
             self.last_sensor_data[sensor_data_label] = {"raw_value": raw_data, "percentage": None, "last_updated_at": time.time(),}
             self.logger.error(err)
+    
+    def update_sensor_readings(self, label, percentage, **data):
+        """
+        Update the sensor readings with the new value and calculate the average.
+
+        :param label: Label of the sensor
+        :param value: New sensor value
+        :param percentage: New sensor percentage
+        """
+        value = float(data.get('value'))
+        if label not in self.sensor_readings:
+            self.sensor_readings[label] = deque(maxlen=self.max_readings)
+        
+        self.sensor_readings[label].append({"value": value, "percentage": percentage})
+        values = [reading["value"] for reading in self.sensor_readings[label]]
+        percentages = [reading["percentage"] for reading in self.sensor_readings[label]]
+        
+        average_value = sum(values) / len(values)
+        average_percentage = sum(percentages) / len(percentages)
+        min_value = min(values)
+        max_value = max(values)
+        mean_value = sum(values) / len(values)
+        variance = sum((x - mean_value) ** 2 for x in values) / len(values)
+        std_dev = variance ** 0.5
+        
+        self.last_sensor_data[label] = {
+            "value": round(average_value, 2),
+            "percentage": round(average_percentage, 2),
+            "last_updated_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            **data
+        }
+
     def on_disconnect(self, client, userdata, flags, rc, properties):
         self.logger.info("Disconnected with result code: %s", rc)
         self.reconnect()
@@ -304,3 +339,14 @@ class SensorHubController:
 
         """
         self.send_command("CLEAR_ALL")
+
+    def set_max_readings(self, value):
+        self.max_readings = value
+        self.config_manager.set('sensor_hub.max_readings', value)
+        # Update existing deques
+        for sensor in self.sensor_readings:
+            self.sensor_readings[sensor] = deque(self.sensor_readings[sensor], maxlen=value)
+            
+    def restart_arduino(self):
+        self.send_command("RESTART")
+        

@@ -56,7 +56,7 @@
             "red": 30,
             "yellow": 20
         },
-        "total_water_ml": 8000,
+        "total_water_ml": 3000,
         "ml_per_plant": 10
     },
     "event": {
@@ -107,7 +107,8 @@
                 }
             }
         },
-        "interval": 10000
+        "interval": 10000,
+        "max_readings": 100
     },
     "plants": {
         "plant_1": {

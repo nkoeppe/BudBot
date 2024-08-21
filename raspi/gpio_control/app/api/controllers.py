@@ -251,11 +251,37 @@ def get_sensor_calibration(label):
     else:
         return jsonify({"status": "error", "message": f"Calibration not found for sensor {label}"}), 404
 
+@main.route('/sensor-hub/max-readings', methods=['GET', 'POST'])
+def max_readings():
+    if request.method == 'POST':
+        max_readings = request.json.get('max_readings')
+        if max_readings is not None and isinstance(max_readings, int) and max_readings > 0:
+            sensor_hub_controller.set_max_readings(max_readings)
+            logger.info(f"Max readings updated to {max_readings}")
+            return jsonify({"status": "success", "message": f"Max readings updated to {max_readings}"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Invalid max_readings value"}), 400
+    else:
+        max_readings = sensor_hub_controller.max_readings
+        return jsonify({"status": "success", "max_readings": max_readings}), 200
+    
+@main.route('/sensor-hub/readings', methods=['GET'])
+def get_readings():
+    data = {label: list(readings) for label, readings in sensor_hub_controller.sensor_readings.items()}
+    logger.info(f"Readings retrieved: {data}")
+    return jsonify({"status": "success", "data": data}), 200
+    
 @main.route('/sensor-hub/clear-all', methods=['POST'])
 def clear_all():
     logger.debug(f"Clearing all sensors and settings")
     sensor_hub_controller.clear_all()
     return jsonify({"status": "success", "message": "Cleared all sensors and settings"}), 200
+
+@main.route('/sensor-hub/restart-arduino', methods=['POST'])
+def restart_arduino():
+    logger.debug(f"Restarting Arduino")
+    sensor_hub_controller.restart_arduino()
+    return jsonify({"status": "success", "message": "Arduino restarted"}), 200
 
 @main.route('/plants', methods=['GET'])
 def get_all_plants():

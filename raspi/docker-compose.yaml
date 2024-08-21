@@ -90,6 +90,33 @@ services:
   #   depends_on:
   #     - gpio_control
 
+  # camera_service:
+  #   build: ./camera_service
+  #   container_name: camera_service
+  #   privileged: true
+  #   devices:
+  #     - "/dev/video14:/dev/video0" 
+  #   ports:
+  #     - "8081:8081" 
+  #   restart: always
+
+  motioneye:
+    image: ccrisan/motioneye:master-armhf
+    container_name: motioneye
+    hostname: motioneye
+    ports:
+      - "8081:8081" 
+      - "8765:8765"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/motioneye:/etc/motioneye
+      - /var/lib/motioneye:/var/lib/motioneye
+    devices:
+      # - "/dev/video14:/dev/video14" 
+      - "/dev/video15:/dev/video15" 
+
+    restart: always
+
 volumes:
   grafana-storage:
   influxdb-data:
