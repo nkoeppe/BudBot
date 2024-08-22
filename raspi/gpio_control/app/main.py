@@ -68,7 +68,7 @@ async def main():
     logger.debug("Starting main function")
     logger.debug("Initializing controllers")
     relay_controller = RelayController(logger)
-    sensor_hub_controller = SensorHubController(logger, config_manager)
+    sensor_hub_controller = SensorHubController(logger, config_manager, mqtt_broker="fancyguysdev.de", mqtt_port=1883)
     plant_manager = PlantManager(config_manager, sensor_hub_controller)
     water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger, plant_manager, sensor_hub_controller)   
     event_controller = EventController(water_nutrient_controller, config_manager, logger, plant_manager, sensor_hub_controller)
