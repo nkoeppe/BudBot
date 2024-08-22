@@ -212,10 +212,15 @@ def add_sensor():
     if not sensor_data or 'pin' not in sensor_data or 'type' not in sensor_data or 'id' not in sensor_data:
         return jsonify({"status": "error", "message": "Invalid sensor data"}), 400
     
-    success = sensor_hub_controller.add_sensor(f"{sensor_data['type']}_{sensor_data['id']}", sensor_data)
+    label = f"{sensor_data['type']}_{sensor_data['id']}"
+    if sensor_data['type'].startswith('dht'):
+        success = sensor_hub_controller.add_dht_sensor(label, sensor_data)
+    else:
+        success = sensor_hub_controller.add_sensor(label, sensor_data)
+    
     if success:
-        logger.info(f"Added new sensor: {sensor_data['type']}_{sensor_data['id']}")
-        return jsonify({"status": "success", "message": f"Sensor {sensor_data['type']}_{sensor_data['id']} added successfully"}), 201
+        logger.info(f"Added new sensor: {label}")
+        return jsonify({"status": "success", "message": f"Sensor {label} added successfully"}), 201
     else:
         return jsonify({"status": "error", "message": "Failed to add sensor"}), 500
 

@@ -1,9 +1,17 @@
+#include <DHT_U.h>
+#include <DHT.h>
+
+
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+
+
 unsigned long lastSendTime = 0;
 unsigned long sendInterval = 5000; // Default send interval
 const int maxSensors = 10;
 int sensorPins[maxSensors] = {-1}; // Default sensor pin
 String sensorTypes[maxSensors] = {""}; // Default sensor type
 String sensorIds[maxSensors] = {""}; // Default sensor id
+DHT* dhtSensors[maxSensors] = {nullptr}; // Array to store DHT sensor objects
 int sensorCount = 0; // Number of sensors currently configured
 
 void setup()
@@ -17,15 +25,11 @@ void loop() {
     command.trim();
 
     if (command == "GET_DATA") {
-      Serial.print("arduino/logs ");
-      Serial.println("Received GET_DATA command");
+      Serial.println("arduino/logs Received GET_DATA command");
       sendSensorData();
     } else if (command.startsWith("SET_INTERVAL")) {
       sendInterval = command.substring(12).toInt(); // Extract the new interval from the command
-      Serial.print("arduino/logs ");
-      Serial.print("Set send interval to: ");
-      Serial.print(sendInterval);
-      Serial.println(".");
+      Serial.println("arduino/logs Set send interval to: " + sendInterval);
     } else if (command.startsWith("ADD_SENSOR")) {
       String params = command.substring(11); // Remove the command (ADD_SENSOR with space)
       int spaceIndex = params.indexOf(' '); // Find the space between pin and type
@@ -34,18 +38,15 @@ void loop() {
       int spaceIndex2 = typeAndId.indexOf(' '); // Find the space between type and id
       String sensorType = typeAndId.substring(0, spaceIndex2); // Extract the sensor type from the command
       String sensorId = typeAndId.substring(spaceIndex2 + 1); // Extract the sensor id from the command
-      Serial.print("arduino/logs ");
-      Serial.print("Added sensor: ");
-      Serial.print(sensorType);
-      Serial.print(" ");
-      Serial.print(sensorId);
-      Serial.print(" on pin: ");
-      Serial.print(pinValue);
-      Serial.println(".");
+      Serial.println("arduino/logs Added sensor: " + sensorType + " " + sensorId + " on pin: " + pinValue);
       if (sensorCount < maxSensors) {
         sensorPins[sensorCount] = pinValue;
         sensorTypes[sensorCount] = sensorType;
         sensorIds[sensorCount] = sensorId;
+        if (sensorType == "dht") {
+          dhtSensors[sensorCount] = new DHT(pinValue, DHTTYPE);
+          dhtSensors[sensorCount]->begin();
+        }
         sensorCount++;
       }
     } else if (command.startsWith("REMOVE_SENSOR")) {
@@ -57,11 +58,10 @@ void loop() {
             sensorPins[j] = sensorPins[j + 1];
             sensorTypes[j] = sensorTypes[j + 1];
             sensorIds[j] = sensorIds[j + 1];
+            dhtSensors[j] = dhtSensors[j + 1];
           }
           sensorCount--;
-          Serial.print("arduino/logs ");
-          Serial.print("Removed sensor on pin: ");
-          Serial.println(pin);
+          Serial.println("arduino/logs Removed sensor on pin: " + pin);
           break;
         }
       }
@@ -74,9 +74,9 @@ void loop() {
         sensorPins[i] = -1;
         sensorTypes[i] = "";
         sensorIds[i] = "";
+        dhtSensors[i] = nullptr;
       }
-      Serial.print("arduino/logs ");
-      Serial.println("Cleared all sensors and settings");
+      Serial.println("arduino/logs Cleared all sensors and settings");
     }
   }
   
@@ -88,13 +88,15 @@ void loop() {
 
 void sendSensorData() {
   for (int i = 0; i < sensorCount; i++) {
-    int sensorValue = analogRead(sensorPins[i]);
-    Serial.print("sensor/");
-    Serial.print(sensorTypes[i]);
-    Serial.print(" ");
-    Serial.print(sensorIds[i]);
-    Serial.print(" ");
-    Serial.println(sensorValue);
+    String sensorValue;
+    if (sensorTypes[i] == "dht") {
+      float humidity = dhtSensors[i]->readHumidity();
+      float temperature = dhtSensors[i]->readTemperature();
+      sensorValue = String(humidity) + " " + String(temperature);
+    } else {
+      sensorValue = String(analogRead(sensorPins[i]));
+    }
+    Serial.println("sensor/" + sensorTypes[i] + " " + sensorIds[i] + " " + sensorValue);
   }
 }
 
@@ -109,5 +111,6 @@ void sendSensorData() {
 // GET_DATA
 // SET_INTERVAL 10000
 // ADD_SENSOR 2 soil_moisture 2
+// ADD_SENSOR 3 DHT 1
 // REMOVE_SENSOR 2
 // CLEAR_ALL

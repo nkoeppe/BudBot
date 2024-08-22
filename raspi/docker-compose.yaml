@@ -105,7 +105,7 @@ services:
     container_name: motioneye
     hostname: motioneye
     ports:
-      - "8081:8081" 
+      - "8082:8081" 
       - "8765:8765"
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -113,9 +113,9 @@ services:
       - /var/lib/motioneye:/var/lib/motioneye
     devices:
       # - "/dev/video14:/dev/video14" 
-      - "/dev/video15:/dev/video15" 
+      - "/dev/video0:/dev/video0" 
 
-    restart: always
+    restart: never
 
 volumes:
   grafana-storage:

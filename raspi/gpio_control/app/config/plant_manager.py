@@ -1,8 +1,10 @@
 from app.config.config_manager import ConfigManager
+from app.controller.sensor_hub_controller import SensorHubController
 
 class PlantManager:
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, sensor_hub_controller: SensorHubController):
         self.config_manager = config_manager
+        self.sensor_hub_controller = sensor_hub_controller
         self.plants = self.load_plants()
 
     def load_plants(self):
@@ -44,10 +46,24 @@ class PlantManager:
         self.config_manager.set(f'plants.{plant_id}', plant_data)
 
     def get_plant(self, plant_id):
-        return self.config_manager.get(f'plants.{plant_id}')
+        plant_data = self.config_manager.get(f'plants.{plant_id}')
+        if plant_data:
+            sensor_id = plant_data.get('moisture_sensor_id')
+            if sensor_id:
+                sensor_data = self.sensor_hub_controller.get_latest_sensor_data_by_sensor_id(sensor_id)
+                if sensor_data:
+                    plant_data['moisture_percentage'] = sensor_data['percentage']
+        return plant_data
 
     def get_all_plants(self):
-        return self.config_manager.get('plants', {})
+        plants = self.config_manager.get('plants', {})
+        for plant_id, plant_data in plants.items():
+            sensor_id = plant_data.get('moisture_sensor_id')
+            if sensor_id:
+                sensor_data = self.sensor_hub_controller.get_latest_sensor_data_by_sensor_id(sensor_id)
+                if sensor_data:
+                    plant_data['moisture_percentage'] = sensor_data['percentage']
+        return plants
 
     def get_plant_by_sensor(self, sensor_id):
         plants = self.config_manager.get('plants', {})

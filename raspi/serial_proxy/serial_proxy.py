@@ -70,27 +70,33 @@ def process_serial_data():
             line = ser.readline().decode('utf-8').strip()
             if line:
                 with lock:
-                    logger.info(f"Received message on serial port: `{line}`")
+                    logger.debug(f"Received message on serial port: `{line}`")
                     topic, message = line.split(" ", 1)
-                    logger.info(f"Received message on topic `{topic}`: `{message}`")
+                    logger.debug(f"Received message on topic `{topic}`: `{message}`")
                     if topic == "arduino/logs":
                         logger.info(message)
                         mqtt_message = f"{topic} {message}"
-                    else:
+                    elif topic.startswith("sensor"):
                         last_sensor_data[topic] = message
                         # Format the message for InfluxDB
                         topic_parts = topic.split('/', 1)
                         sensor_type = topic_parts[1]
                         sensor_id = message.split(' ')[0]
-                        value = message.split(' ')[1]
-                        influx_message = f"value={value} sensor_id={sensor_id}"
-                        mqtt_message = f"{sensor_type} {influx_message}"
-                    result = client.publish(topic, mqtt_message)
-                    status = result[0]
-                    if status == 0:
-                        logger.info(f"Send `{mqtt_message}` to topic `{topic}`")
-                    else:
-                        logger.error(f"Failed to send message to topic `{topic}`")
+                        if sensor_type == "dht":
+                            humidity = message.split(' ')[1]
+                            temperature = message.split(' ')[2]
+                            
+                            mqtt_message = f"dht,humidity={humidity},temperature={temperature},sensor_id={sensor_id} value={humidity};{temperature}"
+                        else:
+                            value = message.split(' ')[1]
+                            mqtt_message = f"{sensor_type},sensor_id={sensor_id} value={value}"
+                        mqtt_message = f"{mqtt_message} {time.time_ns()}"
+                        result = client.publish(topic, mqtt_message)
+                        status = result[0]
+                        if status == 0:
+                            logger.debug(f"Send `{mqtt_message}` to topic `{topic}`")
+                        else:
+                            logger.error(f"Failed to send message to topic `{topic}`")
         except Exception as e:
             logger.error(f"Error processing serial data: {e}")
 

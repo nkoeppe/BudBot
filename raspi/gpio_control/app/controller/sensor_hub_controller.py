@@ -43,7 +43,10 @@ class SensorHubController:
         self.clear_all()
         sensors = self.config_manager.get('sensor_hub.sensors', {})
         for label, sensor in sensors.items():
-            self.add_sensor(label, sensor)
+            if sensor['type'].startswith('dht'):
+                self.add_dht_sensor(label, sensor)
+            else:
+                self.add_sensor(label, sensor)
         self.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.max_readings))
 
     def set_interval(self, interval):
@@ -59,6 +62,18 @@ class SensorHubController:
             sensors[label] = sensor
             self.config_manager.set('sensor_hub.sensors', sensors)
             self.logger.debug(f"Added sensor to config: {label}")
+        return True
+
+    def add_dht_sensor(self, label, sensor):
+        self.logger.debug(f"Adding DHT sensor: {label}")
+        self.send_command(f"ADD_SENSOR {sensor['pin']} {sensor['type']} {sensor['id']}")
+        self.subscribe_topic(f"sensor/{sensor['type']}")
+        self.logger.info(f"Added DHT sensor: {label} on pin: {sensor['pin']}")
+        sensors = self.config_manager.get('sensor_hub.sensors', {})
+        if label not in sensors:
+            sensors[label] = sensor
+            self.config_manager.set('sensor_hub.sensors', sensors)
+            self.logger.debug(f"Added DHT sensor to config: {label}")
         return True
 
     def remove_sensor(self, label):
@@ -219,26 +234,38 @@ class SensorHubController:
     def on_message(self, client, userdata, message):
         raw_data = message.payload.decode('utf-8')
         self.logger.debug("Received data on topic: %s, payload: %s", message.topic, raw_data)
-        
-        # Assuming the topic format is "sensors/{sensor_id}"
-        # sensor_id = message.topic.split('/')[-1]
-        #  message format is "soil_moisture value=518 sensor_id=2"
         try:
-            measurement, values = raw_data.split(' ', 1)
+            
+# dht,humidity={humidity},temperature={temperature},sensor_id={sensor_id} value={humidity};{temperature} {timestamp}"
+# soil_moisture,sensor_id=0 value=277 1724263913.2976274
+            measurement, rest = raw_data.split(',', 1)
+            self.logger.debug(f"Measurement: {measurement}, Rest: {rest}")
+            values, timestamp = rest.rsplit(' ', 1)  # Extract and remove the timestamp
+            self.logger.debug(f"Values: {values}, Timestamp: {timestamp}")
+            fields, value = values.rsplit(' ', 1)  # Extract and remove the timestamp
+            self.logger.debug(f"Fields: {fields}, Value: {value}")
             data = {}
-            for value in values.split(' '):
-                key, value = value.split('=')
-                data[key] = value
+            for field in fields.split(','):
+                self.logger.debug(f"Field: {field}")
+                key, field = field.split('=')
+                data[key] = field
             sensor_id = data['sensor_id']
                 
+            data['value'] = value.split('=')[1]
+            
             sensor_data_label = f"{measurement}_{sensor_id}"
-            percentage = self.convert_to_percentage(sensor_data_label, float(data['value']))
-            self.update_sensor_readings(sensor_data_label, percentage, **data)
+            
+            if message.topic.startswith('sensor/dht'):
+                self.update_dht_sensor_readings(sensor_data_label, data)
+            else:
+                percentage = self.convert_to_percentage(sensor_data_label, float(data['value']))
+                self.update_sensor_readings(sensor_data_label, percentage, **data)
             self.logger.debug(f"Sensor {sensor_id} data: {self.last_sensor_data[sensor_data_label]}")
+            self.publish_sensor_data(f"processed_{message.topic}", measurement, self.last_sensor_data[sensor_data_label])
         except ValueError as err:
-            self.logger.error(f"Invalid sensor data received for measurement {measurement} on sensor {measurement}: {raw_data}")
-            self.last_sensor_data[sensor_data_label] = {"raw_value": raw_data, "percentage": None, "last_updated_at": time.time(),}
             self.logger.error(err)
+            self.logger.error(f"Invalid sensor data received for measurement {measurement}: {raw_data}")
+            self.last_sensor_data[sensor_data_label] = {"raw_value": raw_data, "percentage": None, "last_updated_at": time.time()}
     
     def update_sensor_readings(self, label, percentage, **data):
         """
@@ -248,29 +275,66 @@ class SensorHubController:
         :param value: New sensor value
         :param percentage: New sensor percentage
         """
-        value = float(data.get('value'))
-        if label not in self.sensor_readings:
-            self.sensor_readings[label] = deque(maxlen=self.max_readings)
-        
-        self.sensor_readings[label].append({"value": value, "percentage": percentage})
-        values = [reading["value"] for reading in self.sensor_readings[label]]
-        percentages = [reading["percentage"] for reading in self.sensor_readings[label]]
-        
-        average_value = sum(values) / len(values)
-        average_percentage = sum(percentages) / len(percentages)
-        min_value = min(values)
-        max_value = max(values)
-        mean_value = sum(values) / len(values)
-        variance = sum((x - mean_value) ** 2 for x in values) / len(values)
-        std_dev = variance ** 0.5
-        
-        self.last_sensor_data[label] = {
-            "value": round(average_value, 2),
-            "percentage": round(average_percentage, 2),
-            "last_updated_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            **data
-        }
+        try:
+            value = float(data.get('value'))
+            if label not in self.sensor_readings:
+                self.sensor_readings[label] = deque(maxlen=self.max_readings)
+            
+            self.sensor_readings[label].append({"value": value, "percentage": percentage})
+            values = [reading["value"] for reading in self.sensor_readings[label]]
+            percentages = [reading["percentage"] for reading in self.sensor_readings[label]]
+            
+            average_value = sum(values) / len(values)
+            average_percentage = sum(percentages) / len(percentages)
+            
+            self.last_sensor_data[label] = {
+                "value": round(average_value, 2),
+                "percentage": round(average_percentage, 2),
+                "last_updated_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                **data
+            }
+        except Exception as err:
+            self.logger.error(f"Error updating sensor readings: {err}")
 
+    def update_dht_sensor_readings(self, label, data):
+        try:
+            if label not in self.sensor_readings:
+                self.sensor_readings[label] = deque(maxlen=self.max_readings)
+            
+            data['temperature'] = float(data['temperature'])
+            data['humidity'] = float(data['humidity'])
+            self.sensor_readings[label].append(data)
+            
+            temperature_values = [float(reading['temperature']) for reading in self.sensor_readings[label]]
+            humidity_values = [float(reading['humidity']) for reading in self.sensor_readings[label]]
+            
+            average_temperature = sum(temperature_values) / len(temperature_values)
+            average_humidity = sum(humidity_values) / len(humidity_values)
+            
+            self.last_sensor_data[label] = {
+                "temperature": round(average_temperature, 2),
+                "humidity": round(average_humidity, 2),
+                "last_updated_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                **data
+            }
+        except Exception as err:
+            self.logger.error(f"Error updating DHT sensor readings: {err}")
+
+    def publish_sensor_data(self, topic, sensor_type, data):
+        # msg = {
+        #     "measurement": sensor_type,
+        #     "tags": {
+        #         "sensor_id": data['sensor_id']
+        #     },
+        #     "fields": data,
+        #     "timestamp": time.time_ns()
+        # }
+        data['measurement'] = sensor_type
+        data['timestamp'] = time.time_ns()
+        
+        self.logger.debug(f"Publishing sensor data to topic: {topic}, data: {data}")
+        self.client.publish(f"{topic}", json.dumps(data))
+        
     def on_disconnect(self, client, userdata, flags, rc, properties):
         self.logger.info("Disconnected with result code: %s", rc)
         self.reconnect()

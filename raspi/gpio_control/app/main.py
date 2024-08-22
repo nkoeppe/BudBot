@@ -10,6 +10,7 @@ from app.controller.event_controller import EventController
 from app.config.config_manager import ConfigManager
 import uuid
 from app.config.plant_manager import PlantManager
+from logging.handlers import RotatingFileHandler
 
 # Configure logger
 dictConfig({
@@ -27,10 +28,12 @@ dictConfig({
             'level': 'INFO',
         },
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': 'app.log',
             'formatter': 'default',
             'level': 'DEBUG',
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,  # 5 files max
         },
     },
     'root': {
@@ -42,7 +45,6 @@ dictConfig({
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 config_manager = ConfigManager()
-plant_manager = PlantManager(config_manager)
 
 @app.before_request
 def before_request():
@@ -67,6 +69,7 @@ async def main():
     logger.debug("Initializing controllers")
     relay_controller = RelayController(logger)
     sensor_hub_controller = SensorHubController(logger, config_manager)
+    plant_manager = PlantManager(config_manager, sensor_hub_controller)
     water_nutrient_controller = WaterNutrientController(relay_controller, config_manager, logger, plant_manager, sensor_hub_controller)   
     event_controller = EventController(water_nutrient_controller, config_manager, logger, plant_manager, sensor_hub_controller)
     logger.info("Controllers initialized")
