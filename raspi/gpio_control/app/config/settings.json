@@ -111,10 +111,19 @@
                 "pin": 13,
                 "type": "dht",
                 "id": 0
+            },
+            "soil_moisture_4": {
+                "pin": 4,
+                "type": "soil_moisture",
+                "id": 4,
+                "configuration": {
+                    "dry_value": 570.0,
+                    "wet_value": 250.0
+                }
             }
         },
         "interval": 120000,
-        "max_readings": 100
+        "max_readings": 50
     },
     "plants": {
         "plant_1": {
@@ -124,22 +133,22 @@
                 "start_watering": 0,
                 "stop_watering": 0
             },
-            "moisture_percentage": 67.98
+            "moisture_percentage": 77.4
         },
         "plant_2": {
             "moisture_sensor_id": "soil_moisture_1",
             "water_pump_id": "pump_2",
-            "moisture_percentage": 83.09
+            "moisture_percentage": 70.44
         },
         "plant_3": {
             "moisture_sensor_id": "soil_moisture_2",
             "water_pump_id": "pump_3",
-            "moisture_percentage": 61.48
+            "moisture_percentage": 61.12
         },
         "plant_4": {
             "moisture_sensor_id": "soil_moisture_3",
             "water_pump_id": "pump_4",
-            "moisture_percentage": 55.65,
+            "moisture_percentage": 89.95,
             "watering_threshold": {
                 "start_watering": 0,
                 "stop_watering": 0
