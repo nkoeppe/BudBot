@@ -23,7 +23,6 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=mypassword
       - DOCKER_INFLUXDB_INIT_ORG=myorg
       - DOCKER_INFLUXDB_INIT_BUCKET=sensors
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=-bIb9lFQDw74ylUkbVnNGPr5ISblu2XovqMus8XTK9Zl9XcA_SbVqEG5It3lbhZEM_k6W5zr574yjw7QrW6KYQ==
     restart: always
 
   telegraf:
@@ -34,7 +33,8 @@ services:
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
-      - INFLUX_TOKEN=-bIb9lFQDw74ylUkbVnNGPr5ISblu2XovqMus8XTK9Zl9XcA_SbVqEG5It3lbhZEM_k6W5zr574yjw7QrW6KYQ==
+      - INFLUX_TOKEN=UVX9d85QkxZ-KSzbyDzpaST9M-vAVgd0tEWMcQiXSa5KRqRZv9iqJmWkvamUAHHaJLHxIQZkPwoNI3ADcLHIzg==
+
     restart: always
 
   grafana:
