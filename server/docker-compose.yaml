@@ -18,7 +18,6 @@ services:
     volumes:
       - influxdb-data:/var/lib/influxdb2
     environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=myuser
       - DOCKER_INFLUXDB_INIT_PASSWORD=mypassword
       - DOCKER_INFLUXDB_INIT_ORG=myorg
