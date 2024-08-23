@@ -63,7 +63,7 @@
         "moisture_sensors": {},
         "moisture_thresholds": {},
         "scheduled_events": [],
-        "moisture_check_interval": 60
+        "moisture_check_interval": 60000
     },
     "sensor_hub": {
         "subscribed_topics": [
