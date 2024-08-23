@@ -284,8 +284,12 @@ class SensorHubController:
             values = [reading["value"] for reading in self.sensor_readings[label]]
             percentages = [reading["percentage"] for reading in self.sensor_readings[label]]
             
-            average_value = sum(values) / len(values)
-            average_percentage = sum(percentages) / len(percentages)
+            if len(values) == 0 or len(percentages) == 0:
+                average_value = -1
+                average_percentage = -1
+            else:
+                average_value = sum(values) / len(values)
+                average_percentage = sum(percentages) / len(percentages)
             
             self.last_sensor_data[label] = {
                 "value": round(average_value, 2),
@@ -308,8 +312,12 @@ class SensorHubController:
             temperature_values = [float(reading['temperature']) for reading in self.sensor_readings[label]]
             humidity_values = [float(reading['humidity']) for reading in self.sensor_readings[label]]
             
-            average_temperature = sum(temperature_values) / len(temperature_values)
-            average_humidity = sum(humidity_values) / len(humidity_values)
+            if len(temperature_values) == 0 or len(humidity_values) == 0:
+                average_temperature = -1
+                average_humidity = -1
+            else:
+                average_temperature = sum(temperature_values) / len(temperature_values)
+                average_humidity = sum(humidity_values) / len(humidity_values)
             
             self.last_sensor_data[label] = {
                 "temperature": round(average_temperature, 2),
