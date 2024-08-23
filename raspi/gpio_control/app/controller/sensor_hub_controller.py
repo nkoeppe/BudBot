@@ -260,8 +260,9 @@ class SensorHubController:
             else:
                 percentage = self.convert_to_percentage(sensor_data_label, float(data['value']))
                 self.update_sensor_readings(sensor_data_label, percentage, **data)
-            self.logger.debug(f"Sensor {sensor_id} data: {self.last_sensor_data[sensor_data_label]}")
-            self.publish_sensor_data(f"processed_{message.topic}", measurement, self.last_sensor_data[sensor_data_label])
+            if sensor_data_label in self.last_sensor_data:
+                self.logger.debug(f"Sensor {sensor_id} data: {self.last_sensor_data[sensor_data_label]}")
+                self.publish_sensor_data(f"processed_{message.topic}", measurement, self.last_sensor_data[sensor_data_label])
         except ValueError as err:
             self.logger.error(err)
             self.logger.error(f"Invalid sensor data received for measurement {measurement}: {raw_data}")
