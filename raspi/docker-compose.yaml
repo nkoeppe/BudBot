@@ -31,8 +31,6 @@ services:
       - ./serial_proxy:/app
     devices:
       - "/dev/ttyACM0:/dev/ttyUSB0"
-    depends_on:
-      - mqtt
     restart: always
 
   motioneye:
@@ -48,5 +46,4 @@ services:
       - /var/lib/motioneye:/var/lib/motioneye
     devices:
       - "/dev/video0:/dev/video0" 
-
-    restart: never
+    restart: always

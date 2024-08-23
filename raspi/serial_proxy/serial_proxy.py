@@ -18,7 +18,7 @@ except serial.SerialException as e:
     raise
 
 # MQTT-Setup
-broker = 'mqtt'
+mqtt_broker="fancyguysdev.de"
 port = 1883
 client_id = 'serial-proxy'
 
@@ -54,7 +54,7 @@ def connect_mqtt():
             reconnect_count += 1
         logger.info("Reconnect failed after %s attempts. Exiting...", reconnect_count)
 
-    client = mqtt_client.Client(client_id=client_id, callback_api_version=mqtt_client.CallbackAPIVersion.VERSION2)
+    client = mqtt_client.Client(client_id=client_id, clean_session=True, userdata=None, callback_api_version=mqtt_client.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.connect(broker, port)
