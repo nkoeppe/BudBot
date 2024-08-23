@@ -113,8 +113,8 @@
                 "id": 0
             }
         },
-        "interval": 10000,
-        "max_readings": 10
+        "interval": 120000,
+        "max_readings": 100
     },
     "plants": {
         "plant_1": {

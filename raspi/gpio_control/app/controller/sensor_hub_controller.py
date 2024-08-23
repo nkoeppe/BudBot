@@ -410,7 +410,8 @@ class SensorHubController:
         # Update existing deques
         for sensor in self.sensor_readings:
             self.sensor_readings[sensor] = deque(self.sensor_readings[sensor], maxlen=value)
-            
+        self.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.max_readings))
+        
     def restart_arduino(self):
         self.send_command("RESTART")
         

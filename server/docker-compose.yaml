@@ -32,7 +32,7 @@ services:
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
-      - INFLUX_TOKEN=UVX9d85QkxZ-KSzbyDzpaST9M-vAVgd0tEWMcQiXSa5KRqRZv9iqJmWkvamUAHHaJLHxIQZkPwoNI3ADcLHIzg==
+      - INFLUX_TOKEN=VWjGZ_sK17bVBb6rxOxOpS11_4olH0rZwe7B50Qx7WOccbctUMcxL2UY4YUzYhVhlrAPSx1az9-OE9vv_AXLFw==
 
     restart: always
 
