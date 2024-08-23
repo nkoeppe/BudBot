@@ -47,3 +47,15 @@ services:
     devices:
       - "/dev/video0:/dev/video0" 
     restart: always
+
+
+  grafana:
+    image: grafana/grafana-enterprise
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    restart: always
+
+volumes:
+  grafana-storage:
