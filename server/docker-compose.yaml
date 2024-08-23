@@ -49,4 +49,6 @@ services:
 
 volumes:
   grafana-storage:
+    external: true
   influxdb-data:
+    external: true
