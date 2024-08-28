@@ -63,7 +63,7 @@
         "moisture_sensors": {},
         "moisture_thresholds": {},
         "scheduled_events": [],
-        "moisture_check_interval": 60000
+        "moisture_check_interval": 60
     },
     "sensor_hub": {
         "subscribed_topics": [
@@ -143,7 +143,11 @@
         "plant_3": {
             "moisture_sensor_id": "soil_moisture_2",
             "water_pump_id": "pump_3",
-            "moisture_percentage": 61.12
+            "moisture_percentage": 61.12,
+            "watering_threshold": {
+                "start_watering": 42,
+                "stop_watering": 50
+            }
         },
         "plant_4": {
             "moisture_sensor_id": "soil_moisture_3",
