@@ -130,33 +130,38 @@
             "moisture_sensor_id": "soil_moisture_0",
             "water_pump_id": "pump_1",
             "watering_threshold": {
-                "start_watering": 0,
-                "stop_watering": 0
+                "start_watering": 40,
+                "stop_watering": 50
             },
-            "moisture_percentage": 77.4
+            "moisture_percentage": 29.97
         },
         "plant_2": {
             "moisture_sensor_id": "soil_moisture_1",
             "water_pump_id": "pump_2",
-            "moisture_percentage": 70.44
+            "moisture_percentage": 54.14,
+	    {
+                "start_watering": 40,
+                "stop_watering": 50
+            }
         },
         "plant_3": {
             "moisture_sensor_id": "soil_moisture_2",
             "water_pump_id": "pump_3",
-            "moisture_percentage": 61.12,
+            "moisture_percentage": 41.2,
             "watering_threshold": {
-                "start_watering": 42,
+                "start_watering": 40,
                 "stop_watering": 50
             }
         },
         "plant_4": {
             "moisture_sensor_id": "soil_moisture_3",
             "water_pump_id": "pump_4",
-            "moisture_percentage": 89.95,
+            "moisture_percentage": 76.79,
             "watering_threshold": {
-                "start_watering": 0,
-                "stop_watering": 0
+                "start_watering": 40,
+                "stop_watering": 50
             }
         }
-    }
+    },
+    "abort_mode": false
 }
