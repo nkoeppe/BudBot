@@ -119,8 +119,9 @@ class RelayController:
 
     def turn_off(self, pin):
         try:
-            self.pi.write(pin, 1)  # Set to HIGH
-            self.logger.info("Turned off pin %d", pin)
+            if not pin == -1 and not self.config_manager.get('abort_mode', False):
+                self.pi.write(pin, 1)
+                self.logger.info("Turned off pin %d", pin)
             return True
         except Exception as e:
             self.logger.error(f"Failed to turn off pin {pin}: {str(e)}")
