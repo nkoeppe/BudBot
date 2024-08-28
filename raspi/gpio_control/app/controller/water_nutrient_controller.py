@@ -353,6 +353,7 @@ class WaterNutrientController:
         except Exception as e:
             self.logger.error("Error distributing to plant %s: %s", plant_id, e)
             self.relay_controller.turn_off(pump['pin'])  # Ensure pump is turned off in case of error
+            
     def sensor_based_distribute_to_plant(self, plant_id):
         """
         Activates the distribution pump for a specific plant to deliver the nutrient solution.
@@ -378,9 +379,7 @@ class WaterNutrientController:
             threshold = self.config_manager.get('soil_moisture_threshold', 30)
             max_watering_time = self.config_manager.get('max_watering_time', 60)
             
-            block_duration = 500
-            
-            self.sensor_controller.set_interval(ceil(block_duration/(self.sensor_controller.max_readings+1)))
+            self.sensor_controller.set_interval(100)
 
             if self.config_manager.get('abort_mode', False):
                 self.logger.info("ABORT mode active, stopping watering for plant: %s", plant_id)
@@ -393,7 +392,7 @@ class WaterNutrientController:
                 if self.config_manager.get('abort_mode', False):
                     self.logger.info("ABORT mode activated, stopping watering for plant: %s", plant_id)
                     break
-                time.sleep(block_duration / 1000)
+                time.sleep(0.1)
             
             self.relay_controller.turn_off(pump['pin'])
             end_time = time.time()
