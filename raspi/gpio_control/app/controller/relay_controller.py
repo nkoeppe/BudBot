@@ -118,9 +118,13 @@ class RelayController:
         return True
 
     def turn_off(self, pin):
-        self.pi.write(pin, 1)  # Set to HIGH
-        self.logger.info("Turned off pin %d", pin)
-        return True
+        try:
+            self.pi.write(pin, 1)  # Set to HIGH
+            self.logger.info("Turned off pin %d", pin)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to turn off pin {pin}: {str(e)}")
+            return False
 
     def get_status(self):
         self.logger.debug("Getting GPIO status")
