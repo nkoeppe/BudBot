@@ -13,17 +13,6 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=sensors
     restart: always
 
-  telegraf:
-    image: telegraf:latest
-    depends_on:
-      - influxdb
-    volumes:
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
-    environment:
-      - INFLUX_TOKEN=VWjGZ_sK17bVBb6rxOxOpS11_4olH0rZwe7B50Qx7WOccbctUMcxL2UY4YUzYhVhlrAPSx1az9-OE9vv_AXLFw==
-
-    restart: always
-
   grafana:
     image: grafana/grafana-enterprise
     ports:
