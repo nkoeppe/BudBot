@@ -9,10 +9,12 @@ import random
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+baud_rate = 115200
+
 # Serielle Schnittstelle
 try:
-    ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=5)
-    logger.info("Serial connection established.")
+    ser = serial.Serial('/dev/ttyUSB0', baud_rate, timeout=5)
+    logger.info(f"Serial connection established with baud rate {baud_rate}.")
 except serial.SerialException as e:
     logger.error(f"Failed to connect to serial port: {e}")
     raise

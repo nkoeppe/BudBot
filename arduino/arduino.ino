@@ -16,7 +16,7 @@ int sensorCount = 0; // Number of sensors currently configured
 
 void setup()
 { 
-   Serial.begin(9600);
+   Serial.begin(115200);
 }
 
 void loop() {
