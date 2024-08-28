@@ -134,9 +134,10 @@ class EventController:
             self.logger.error("Error monitoring events: %s", e)
     
     def check_moisture_levels(self):
-        """
-        Checks all moisture sensors and triggers watering if below threshold.
-        """
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning("ABORT mode active, skipping moisture level check")
+            return
+
         try:
             self.logger.debug("Checking moisture levels for all plants")
             for plant_id, plant_data in self.plant_manager.get_all_plants().items():

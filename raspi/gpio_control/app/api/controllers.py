@@ -377,3 +377,18 @@ def moisture_check_interval():
     else:
         interval = event_controller.moisture_check_interval
         return jsonify({"status": "success", "interval": interval}), 200
+
+@main.route('/disable', methods=['POST'])
+def abort():
+    logger.debug("ABORT command received")
+    relay_controller.abort()
+    water_nutrient_controller.abort()
+    logger.info("ABORT command executed")
+    return jsonify({"status": "success", "message": "ABORT command executed"}), 200
+
+@main.route('/enable', methods=['POST'])
+def reset_abort():
+    logger.debug("Reset ABORT command received")
+    config_manager.set('abort_mode', False)
+    logger.info("ABORT mode reset")
+    return jsonify({"status": "success", "message": "ABORT mode reset"}), 200

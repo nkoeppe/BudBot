@@ -70,8 +70,9 @@ unused_gpio_ports = [2, 3, 4, 7, 8, 9, 10, 11, 14, 15, 22, 23, 24, 25, 26]
 import pigpio
 
 class RelayController:
-    def __init__(self, logger):
+    def __init__(self, logger, config_manager):
         self.logger = logger
+        self.config_manager = config_manager
         self.logger.debug("Initializing RelayController")
         self.pi = pigpio.pi('gpio_deamon')  # Connect to local Pi.
 
@@ -81,26 +82,36 @@ class RelayController:
         self.logger.info("RelayController initialized")
 
     def init_gpio_output(self, pins):
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning("Attempted to initialize GPIO outputs while in ABORT mode")
+            return
         for pin in pins:
             self.pi.set_mode(pin, pigpio.OUTPUT)
             self.pi.write(pin, 1)  # Set to HIGH
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
-        self.logger.debug("GPIOs Ouputs initialized: %s", pins)
+        self.logger.debug("GPIOs Outputs initialized: %s", pins)
 
     def init_gpio_input(self, pins):
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning("Attempted to initialize GPIO inputs while in ABORT mode")
+            return
         for pin in pins:
             self.pi.set_mode(pin, pigpio.INPUT)
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
         self.logger.debug("GPIOs Inputs initialized: %s", pins)
 
     def turn_on(self, pin):
-        # self.logger.debug("Turning on pin %d", pin)
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning(f"Attempted to turn on pin {pin} while in ABORT mode")
+            return False
+        return self._turn_on_impl(pin)
+
+    def _turn_on_impl(self, pin):
         self.pi.write(pin, 0)  # Set to LOW
         self.logger.info("Turned on pin %d", pin)
         return True
 
     def turn_off(self, pin):
-        # self.logger.debug("Turning off pin %d", pin)
         self.pi.write(pin, 1)  # Set to HIGH
         self.logger.info("Turned off pin %d", pin)
         return True
@@ -120,7 +131,8 @@ class RelayController:
         self.logger.info("GPIO status retrieved")
         return {
             'gpio_status': status,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'abort_mode': self.config_manager.get('abort_mode', False)
         }
 
     def get_pin_state(self, pin):
@@ -129,6 +141,9 @@ class RelayController:
         return state
 
     def test(self):
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning("Attempted to run test while in ABORT mode")
+            return "Test aborted due to ABORT mode"
         self.logger.debug("Testing all relay pins")
         for pin in self.relay_pins:
             self.test_pin(pin)
@@ -136,9 +151,19 @@ class RelayController:
         return "Test completed"
     
     def test_pin(self, pin):
+        if self.config_manager.get('abort_mode', False):
+            self.logger.warning(f"Attempted to test pin {pin} while in ABORT mode")
+            return "Test aborted due to ABORT mode"
         self.logger.debug("Testing pin %d", pin)
         self.pi.write(pin, 0)  # Set to LOW
-        time.sleep(1)  # Sleep for exactly 10 seconds
+        time.sleep(1)  # Sleep for exactly 1 second
         self.pi.write(pin, 1)  # Set to HIGH
         self.logger.info("Test completed for pin %d", pin)
         return "Test completed"
+
+    def abort(self):
+        self.logger.debug("Executing ABORT command")
+        for pin in range(2, 28):
+            self.turn_off(pin)
+        self.config_manager.set('abort_mode', True)
+        self.logger.info("ABORT command executed, all pins turned off")

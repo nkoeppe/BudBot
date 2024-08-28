@@ -10,7 +10,6 @@ from app.controller.event_controller import EventController
 from app.config.config_manager import ConfigManager
 import uuid
 from app.config.plant_manager import PlantManager
-from logging.handlers import RotatingFileHandler
 
 # Configure logger
 dictConfig({

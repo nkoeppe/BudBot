@@ -117,16 +117,33 @@ class WaterNutrientController:
 
             self.logger.debug("Mixing nutrients: %s", nutrient_amounts)
             for label, amount in nutrient_amounts.items():
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.warning("ABORT mode activated. Stopping nutrient mixing.")
+                    break
                 if label in self.nutrient_pumps and self.nutrient_pumps[label]['pin'] != -1:
                     pump = self.nutrient_pumps[label]
                     duration = amount / pump['flow_rate']
                     self.relay_controller.turn_on(pump['pin'])
-                    time.sleep(duration)
+                    start_time = time.time()
+                    while time.time() - start_time < duration:
+                        if self.config_manager.get('abort_mode', False):
+                            self.logger.warning("ABORT mode activated. Stopping nutrient mixing for %s.", label)
+                            break
+                        time.sleep(0.1)
                     self.relay_controller.turn_off(pump['pin'])
-                    self.logger.info("Added %d ml of %s nutrient", amount, label)
+                    if not self.config_manager.get('abort_mode', False):
+                        self.logger.info("Added %d ml of %s nutrient", amount, label)
+                    else:
+                        actual_duration = time.time() - start_time
+                        actual_amount = actual_duration * pump['flow_rate']
+                        self.logger.info("Aborted. Added approximately %.2f ml of %s nutrient", actual_amount, label)
+                        break
                 else:
                     self.logger.warning("Unknown nutrient label '%s'", label)
-            self.logger.info("Nutrient mixing complete.")
+            if not self.config_manager.get('abort_mode', False):
+                self.logger.info("Nutrient mixing complete.")
+            else:
+                self.logger.warning("Nutrient mixing aborted.")
         except Exception as e:
             self.logger.error("Error mixing nutrients: %s", e)
 
@@ -151,12 +168,17 @@ class WaterNutrientController:
             flow_rate = self.water_pump['flow_rate']
 
             while not self.is_mixer_full() and water_added < ml and (time.time() - start_time) < 60:
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.warning("ABORT mode activated. Stopping water filling.")
+                    break
                 time.sleep(0.1)  # Check every 100ms
                 water_added += flow_rate * 0.1
 
             self.relay_controller.turn_off(self.water_pump['pin'])
             
-            if self.is_mixer_full():
+            if self.config_manager.get('abort_mode', False):
+                self.logger.warning("Water filling aborted. Added approximately %.2f ml of water.", water_added)
+            elif self.is_mixer_full():
                 self.logger.info("Mixer full. Added approximately %.2f ml of water.", water_added)
             elif water_added >= ml:
                 self.logger.info("Added %d ml of water to mixer.", ml)
@@ -184,11 +206,17 @@ class WaterNutrientController:
             self.logger.debug("Filling mixer with %d ml of water...", total_ml)
             water_added = 0
             while not self.is_mixer_full() and water_added < total_ml:
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.warning("ABORT mode activated. Stopping mixer filling.")
+                    break
                 remaining = min(1000, total_ml - water_added)
                 self.fill_water_to_mixer(remaining)
                 water_added += remaining
             
-            self.logger.info("Mixer filled with %d ml of water.", water_added)
+            if self.config_manager.get('abort_mode', False):
+                self.logger.warning("Mixer filling aborted. Added approximately %d ml of water.", water_added)
+            else:
+                self.logger.info("Mixer filled with %d ml of water.", water_added)
         except Exception as e:
             self.logger.error("Error filling mixer with water: %s", e)
             
@@ -236,7 +264,6 @@ class WaterNutrientController:
         except Exception as e:
             self.logger.error("Error checking if water tank is low: %s", e)
             return False
-
     def distribute_to_plants(self, ml_per_plant=None):
         """
         Activates the distribution pumps to deliver the nutrient solution to the plants.
@@ -250,15 +277,39 @@ class WaterNutrientController:
 
             self.logger.debug("Distributing %d ml of nutrient solution to each plant", ml_per_plant)
             for plant_id, pump in self.distribution_pumps.items():
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.warning("ABORT mode activated. Stopping distribution.")
+                    break
+                
                 duration = ml_per_plant / pump['flow_rate']
+                start_time = time.time()
                 self.relay_controller.turn_on(pump['pin'])
-                time.sleep(duration)
+                
+                while time.time() - start_time < duration:
+                    if self.config_manager.get('abort_mode', False):
+                        self.logger.warning("ABORT mode activated. Stopping distribution for plant: %s", plant_id)
+                        break
+                    time.sleep(0.1)  # Check abort mode every 100ms
+                
                 self.relay_controller.turn_off(pump['pin'])
-                self.logger.info("Distribution complete for plant: %s", plant_id)
-            self.logger.info("Distribution complete for all plants.")
+                
+                if not self.config_manager.get('abort_mode', False):
+                    self.logger.info("Distribution complete for plant: %s", plant_id)
+                else:
+                    actual_duration = time.time() - start_time
+                    actual_ml = actual_duration * pump['flow_rate']
+                    self.logger.info("Distribution aborted for plant: %s. Approximate amount distributed: %.2f ml", plant_id, actual_ml)
+                    break
+            
+            if not self.config_manager.get('abort_mode', False):
+                self.logger.info("Distribution complete for all plants.")
+            else:
+                self.logger.warning("Distribution aborted due to ABORT mode.")
         except Exception as e:
             self.logger.error("Error distributing to plants: %s", e)
-        
+            for pump in self.distribution_pumps.values():
+                self.relay_controller.turn_off(pump['pin']) 
+                
     def distribute_to_plant(self, plant_id, ml=None):
         """
         Activates the distribution pump for a specific plant to deliver the nutrient solution.
@@ -282,13 +333,26 @@ class WaterNutrientController:
                 return
             
             duration = ml / pump['flow_rate']
+            start_time = time.time()
             self.relay_controller.turn_on(pump['pin'])
-            time.sleep(duration)
+            
+            while time.time() - start_time < duration:
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.warning("ABORT mode activated. Stopping distribution for plant: %s", plant_id)
+                    break
+                time.sleep(0.1)  # Check abort mode every 100ms
+            
             self.relay_controller.turn_off(pump['pin'])
-            self.logger.info("Distribution complete for plant: %s", plant_id)
+            
+            if not self.config_manager.get('abort_mode', False):
+                self.logger.info("Distribution complete for plant: %s", plant_id)
+            else:
+                actual_duration = time.time() - start_time
+                actual_ml = actual_duration * pump['flow_rate']
+                self.logger.info("Distribution aborted for plant: %s. Approximate amount distributed: %.2f ml", plant_id, actual_ml)
         except Exception as e:
             self.logger.error("Error distributing to plant %s: %s", plant_id, e)
-    
+            self.relay_controller.turn_off(pump['pin'])  # Ensure pump is turned off in case of error
     def sensor_based_distribute_to_plant(self, plant_id):
         """
         Activates the distribution pump for a specific plant to deliver the nutrient solution.
@@ -318,11 +382,17 @@ class WaterNutrientController:
             
             self.sensor_controller.set_interval(ceil(block_duration/(self.sensor_controller.max_readings+1)))
 
-            
+            if self.config_manager.get('abort_mode', False):
+                self.logger.info("ABORT mode active, stopping watering for plant: %s", plant_id)
+                return
+
             self.relay_controller.turn_on(pump['pin'])
             start_time = time.time()
             while (time.time() - start_time < max_watering_time and 
                    self.sensor_controller.get_latest_sensor_data_by_sensor_id(plant['moisture_sensor_id'])['percentage'] < threshold):
+                if self.config_manager.get('abort_mode', False):
+                    self.logger.info("ABORT mode activated, stopping watering for plant: %s", plant_id)
+                    break
                 time.sleep(block_duration / 1000)
             
             self.relay_controller.turn_off(pump['pin'])
@@ -387,3 +457,17 @@ class WaterNutrientController:
             self.logger.info("Configuration reloaded for WaterNutrientController")
         except Exception as e:
             self.logger.error("Error reloading configuration: %s", e)
+
+    def abort(self):
+        self.logger.debug("Executing ABORT command in WaterNutrientController")
+        # Stop any ongoing operations
+        # This might involve setting flags to stop loops in other methods
+        self.config_manager.set('abort_mode', True)
+        # Turn off all pumps
+        for pump in self.nutrient_pumps.values():
+            self.relay_controller.turn_off(pump['pin'])
+        self.relay_controller.turn_off(self.water_pump['pin'])
+        for pump in self.distribution_pumps.values():
+            self.relay_controller.turn_off(pump['pin'])
+        self.logger.info("ABORT command executed in WaterNutrientController")
+        self.logger.info("ABORT command executed in WaterNutrientController")
