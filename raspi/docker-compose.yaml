@@ -16,7 +16,11 @@ services:
     ports:
       - 5000:5000
     restart: always
+    depends_on:
+      - serial_proxy
+      - gpio_deamon
 
+      
   gpio_deamon:
     image: zinen2/alpine-pigpiod:latest
     container_name: gpio_deamon
@@ -27,6 +31,8 @@ services:
 
   serial_proxy:
     build: ./serial_proxy
+    depends_on:
+      - mqtt
     volumes:
       - ./serial_proxy:/app
     devices:
@@ -48,14 +54,6 @@ services:
       - "/dev/video0:/dev/video0" 
     restart: always
 
-
-  grafana:
-    image: grafana/grafana-enterprise
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-storage:/var/lib/grafana
-    restart: always
 
   mqtt:
     image: eclipse-mosquitto:2.0

@@ -16,7 +16,6 @@ services:
   telegraf:
     image: telegraf:latest
     depends_on:
-      - mqtt
       - influxdb
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
