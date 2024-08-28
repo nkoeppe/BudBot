@@ -2,7 +2,8 @@ from app.config.config_manager import ConfigManager
 from app.controller.sensor_hub_controller import SensorHubController
 
 class PlantManager:
-    def __init__(self, config_manager: ConfigManager, sensor_hub_controller: SensorHubController):
+    def __init__(self, logger, config_manager: ConfigManager, sensor_hub_controller: SensorHubController):
+        self.logger = logger
         self.config_manager = config_manager
         self.sensor_hub_controller = sensor_hub_controller
         self.plants = self.load_plants()
