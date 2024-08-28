@@ -129,6 +129,7 @@ class EventController:
             self.logger.debug("Starting event monitoring")
             while True:
                 self.check_moisture_levels()
+                self.logger.debug("sleeping for %d seconds", self.config_manager.get('event.moisture_check_interval', 60))
                 await asyncio.sleep(self.config_manager.get('event.moisture_check_interval', 60))  # Check every second for pending tasks and moisture levels
         except Exception as e:
             self.logger.error("Error monitoring events: %s", e)

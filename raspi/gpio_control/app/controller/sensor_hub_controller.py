@@ -248,14 +248,10 @@ class SensorHubController:
 # dht,humidity={humidity},temperature={temperature},sensor_id={sensor_id} value={humidity};{temperature} {timestamp}"
 # soil_moisture,sensor_id=0 value=277 1724263913.2976274
             measurement, rest = raw_data.split(',', 1)
-            self.logger.debug(f"Measurement: {measurement}, Rest: {rest}")
             values, timestamp = rest.rsplit(' ', 1)  # Extract and remove the timestamp
-            self.logger.debug(f"Values: {values}, Timestamp: {timestamp}")
             fields, value = values.rsplit(' ', 1)  # Extract and remove the timestamp
-            self.logger.debug(f"Fields: {fields}, Value: {value}")
             data = {}
             for field in fields.split(','):
-                self.logger.debug(f"Field: {field}")
                 key, field = field.split('=')
                 data[key] = field
             sensor_id = data['sensor_id']
