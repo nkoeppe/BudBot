@@ -376,7 +376,7 @@ class WaterNutrientController:
                 self.logger.warning("No soil moisture sensor found for plant: %s", plant_id)
                 return
             
-            threshold = self.config_manager.get('soil_moisture_threshold', 30)
+            threshold = plant['watering_threshold']['stop_watering']
             max_watering_time = self.config_manager.get('max_watering_time', 60)
             
             self.sensor_controller.set_interval(100)
