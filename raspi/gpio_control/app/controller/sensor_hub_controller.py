@@ -25,7 +25,7 @@ class SensorHubController:
         self.load_subscriptions()
         
         self.load_sensors()
-    
+        self.set_max_readings(self.max_readings)
         self.client.loop_start()
         self.logger.info(f"")
         self.logger.info("SensorHubController initialized with the following configuration:")
@@ -56,7 +56,6 @@ class SensorHubController:
                 self.add_dht_sensor(label, sensor)
             else:
                 self.add_sensor(label, sensor)
-        self.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.max_readings))
 
     def set_interval(self, interval):
         self.send_command(f"SET_INTERVAL {interval}")
