@@ -81,13 +81,18 @@ class RelayController:
             exit()
         self.logger.info("RelayController initialized")
 
+        self.output_pins = set()
+        self.input_pins = set()
+
     def init_gpio_output(self, pins):
         if self.config_manager.get('abort_mode', False):
             self.logger.warning("Attempted to initialize GPIO outputs while in ABORT mode")
             return
+
         for pin in pins:
             self.pi.set_mode(pin, pigpio.OUTPUT)
             self.pi.write(pin, 1)  # Set to HIGH
+            self.output_pins.add(pin)
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
         self.logger.debug("GPIOs Outputs initialized: %s", pins)
 
@@ -97,6 +102,7 @@ class RelayController:
             return
         for pin in pins:
             self.pi.set_mode(pin, pigpio.INPUT)
+            self.input_pins.add(pin)
             self.logger.debug("Pin %d state: %d", pin, self.get_pin_state(pin))        
         self.logger.debug("GPIOs Inputs initialized: %s", pins)
 
@@ -163,7 +169,7 @@ class RelayController:
 
     def abort(self):
         self.logger.debug("Executing ABORT command")
-        for pin in range(2, 28):
+        for pin in self.output_pins:
             self.turn_off(pin)
         self.config_manager.set('abort_mode', True)
         self.logger.info("ABORT command executed, all pins turned off")
