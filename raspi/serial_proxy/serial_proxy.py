@@ -18,7 +18,7 @@ except serial.SerialException as e:
     raise
 
 # MQTT-Setup
-broker="fancyguysdev.de"
+broker="mqtt"
 port = 1883
 client_id = 'serial-proxy'
 

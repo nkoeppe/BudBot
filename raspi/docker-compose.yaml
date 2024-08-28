@@ -57,5 +57,15 @@ services:
       - grafana-storage:/var/lib/grafana
     restart: always
 
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto-conf:/mosquitto/config
+    restart: always
+
+
 volumes:
   grafana-storage:
