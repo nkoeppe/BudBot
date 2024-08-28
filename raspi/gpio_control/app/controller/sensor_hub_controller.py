@@ -27,8 +27,17 @@ class SensorHubController:
         self.load_sensors()
     
         self.client.loop_start()
-        self.logger.info("SensorHubController initialized and connected to MQTT broker: %s, port: %d", mqtt_broker, mqtt_port)
+        self.logger.info(f"")
+        self.logger.info("SensorHubController initialized with the following configuration:")
+        self.logger.info("MQTT Broker: %s", self.mqtt_broker)
+        self.logger.info("MQTT Port: %d", self.mqtt_port)
+        self.logger.info("Subscribed Topics: %s", self.subscribed_topics)
+        self.logger.info("Sensors: %s", self.config_manager.get('sensor_hub.sensors', {}))
+        self.logger.info("Interval: %d", self.config_manager.get('sensor_hub.interval', 5000))
+        self.logger.info("Max Readings: %d", self.max_readings)
 
+        
+        
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
 

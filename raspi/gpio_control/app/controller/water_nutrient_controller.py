@@ -35,10 +35,7 @@ class WaterNutrientController:
         self.logger.info("Fill Level Sensor: %s", self.fill_level_sensor)
         self.logger.info("Nutrient Amounts: %s", self.nutrient_amounts)
         self.logger.info("Total Water (ml): %d", self.total_water_ml)
-        self.logger.info("ML per Plant: %d", self.ml_per_plant)
-        self.logger.info("Max Readings: %d", self.sensor_controller.max_readings)
-        self.logger.info("Interval: %d", self.sensor_controller.interval)
-        self.logger.info("Mixer Status: %s", "Full" if self.is_mixer_full() else "Not Full")
+        self.logger.info("ML per Plant: %d", self.ml_per_plant)        self.logger.info("Mixer Status: %s", "Full" if self.is_mixer_full() else "Not Full")
 
     def load_config(self):
         try:
