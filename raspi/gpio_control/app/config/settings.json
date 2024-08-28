@@ -122,8 +122,8 @@
                 }
             }
         },
-        "interval": 120000,
-        "max_readings": 50
+        "interval": 300000,
+        "max_readings": 10
     },
     "plants": {
         "plant_1": {

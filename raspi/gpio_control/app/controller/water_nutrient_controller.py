@@ -1,4 +1,5 @@
 import logging
+from math import ceil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -292,7 +293,6 @@ class WaterNutrientController:
         Activates the distribution pump for a specific plant to deliver the nutrient solution.
         Uses the sensor data to determine the amount of water to distribute.
         :param plant_id: The ID of the plant to distribute the nutrient solution to
-        :param ml: Amount of nutrient solution to distribute to the plant in milliliters
         """
         try:
             self.logger.debug("Distributing nutrient solution to plant: %s", plant_id)
@@ -306,20 +306,22 @@ class WaterNutrientController:
                 self.logger.warning("No distribution pump with label %s found for plant: %s", plant['water_pump_id'], plant_id)
                 return
             
-
             if not plant['moisture_sensor_id'] in self.sensor_controller.get_sensors():
                 self.logger.warning("No soil moisture sensor found for plant: %s", plant_id)
                 return
             
             threshold = self.config_manager.get('soil_moisture_threshold', 30)
+            max_watering_time = self.config_manager.get('max_watering_time', 60)
             
-            block_duration = 1000
+            block_duration = 500
             
-            self.sensor_controller.set_interval(block_duration/2)
+            self.sensor_controller.set_interval(ceil(block_duration/(self.sensor_controller.max_readings+1)))
+
             
             self.relay_controller.turn_on(pump['pin'])
             start_time = time.time()
-            while self.sensor_controller.get_latest_sensor_data_by_sensor_id(plant['moisture_sensor_id'])['percentage'] < threshold:
+            while (time.time() - start_time < max_watering_time and 
+                   self.sensor_controller.get_latest_sensor_data_by_sensor_id(plant['moisture_sensor_id'])['percentage'] < threshold):
                 time.sleep(block_duration / 1000)
             
             self.relay_controller.turn_off(pump['pin'])
@@ -328,9 +330,12 @@ class WaterNutrientController:
             duration = end_time - start_time
             estimated_water_added = duration * pump['flow_rate']
             
-            self.logger.info("Distribution complete for plant: %s. Estimated water added: %.2f ml", plant_id, estimated_water_added)
+            if duration >= max_watering_time:
+                self.logger.warning("Max watering time reached for plant: %s. Stopping watering.", plant_id)
             
-            self.sensor_controller.set_interval(self.config_manager.get('sensor_hub.interval', 5000))
+            self.logger.info("Distribution complete for plant: %s. Estimated water added: %.2f ml", plant_id, estimated_water_added)
+            self.sensor_controller.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.sensor_controller.max_readings))
+
         except Exception as e:
             self.logger.error("Error in sensor-based distribution to plant %s: %s", plant_id, e)
 
