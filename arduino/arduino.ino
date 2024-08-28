@@ -28,29 +28,42 @@ void loop() {
       Serial.println("arduino/logs Received GET_DATA command");
       sendSensorData();
     } else if (command.startsWith("SET_INTERVAL")) {
-      sendInterval = command.substring(12).toInt(); // Extract the new interval from the command
-      Serial.println("arduino/logs Set send interval to: " + sendInterval);
+      unsigned long newInterval = command.substring(12).toInt(); // Extract the new interval from the command
+      if (newInterval > 0) {
+        sendInterval = newInterval;
+        Serial.println("arduino/logs Set send interval to: " + String(sendInterval));
+      } else {
+        Serial.println("arduino/logs Error: Invalid interval value");
+      }
     } else if (command.startsWith("ADD_SENSOR")) {
       String params = command.substring(11); // Remove the command (ADD_SENSOR with space)
       int spaceIndex = params.indexOf(' '); // Find the space between pin and type
-      int pinValue = params.substring(0, spaceIndex).toInt(); // Extract the pin number from the command
-      String typeAndId = params.substring(spaceIndex + 1); // Extract the type and id from the command
-      int spaceIndex2 = typeAndId.indexOf(' '); // Find the space between type and id
-      String sensorType = typeAndId.substring(0, spaceIndex2); // Extract the sensor type from the command
-      String sensorId = typeAndId.substring(spaceIndex2 + 1); // Extract the sensor id from the command
-      Serial.println("arduino/logs Added sensor: " + sensorType + " " + sensorId + " on pin: " + pinValue);
-      if (sensorCount < maxSensors) {
-        sensorPins[sensorCount] = pinValue;
-        sensorTypes[sensorCount] = sensorType;
-        sensorIds[sensorCount] = sensorId;
-        if (sensorType == "dht") {
-          dhtSensors[sensorCount] = new DHT(pinValue, DHTTYPE);
-          dhtSensors[sensorCount]->begin();
+      int spaceIndex2 = params.indexOf(' ', spaceIndex + 1); // Find the space between type and id
+      
+      if (spaceIndex != -1 && spaceIndex2 != -1) {
+        int pinValue = params.substring(0, spaceIndex).toInt(); // Extract the pin number from the command
+        String sensorType = params.substring(spaceIndex + 1, spaceIndex2); // Extract the sensor type from the command
+        String sensorId = params.substring(spaceIndex2 + 1); // Extract the sensor id from the command
+        
+        if (sensorCount < maxSensors) {
+          sensorPins[sensorCount] = pinValue;
+          sensorTypes[sensorCount] = sensorType;
+          sensorIds[sensorCount] = sensorId;
+          if (sensorType == "dht") {
+            dhtSensors[sensorCount] = new DHT(pinValue, DHTTYPE);
+            dhtSensors[sensorCount]->begin();
+          }
+          sensorCount++;
+          Serial.println("arduino/logs Added sensor: " + sensorType + " " + sensorId + " on pin: " + String(pinValue));
+        } else {
+          Serial.println("arduino/logs Error: Maximum number of sensors reached");
         }
-        sensorCount++;
+      } else {
+        Serial.println("arduino/logs Error: Invalid ADD_SENSOR command format");
       }
     } else if (command.startsWith("REMOVE_SENSOR")) {
       int pin = command.substring(13).toInt(); // Extract the pin number from the command
+      bool sensorRemoved = false;
       for (int i = 0; i < sensorCount; i++) {
         if (sensorPins[i] == pin) {
           // Shift all subsequent sensors down to fill the gap
@@ -61,9 +74,13 @@ void loop() {
             dhtSensors[j] = dhtSensors[j + 1];
           }
           sensorCount--;
-          Serial.println("arduino/logs Removed sensor on pin: " + pin);
+          sensorRemoved = true;
+          Serial.println("arduino/logs Removed sensor on pin: " + String(pin));
           break;
         }
+      }
+      if (!sensorRemoved) {
+        Serial.println("arduino/logs Error: No sensor found on pin " + String(pin));
       }
     } else if (command == "CLEAR_ALL") {
       // Hard reset to the initial defaults
@@ -74,9 +91,15 @@ void loop() {
         sensorPins[i] = -1;
         sensorTypes[i] = "";
         sensorIds[i] = "";
-        dhtSensors[i] = nullptr;
+        if (dhtSensors[i] != nullptr) {
+          delete dhtSensors[i];
+          dhtSensors[i] = nullptr;
+        }
       }
       Serial.println("arduino/logs Cleared all sensors and settings");
+    }
+    else {
+      Serial.println("arduino/logs Unknown command: " + command);
     }
   }
   
@@ -92,11 +115,21 @@ void sendSensorData() {
     if (sensorTypes[i] == "dht") {
       float humidity = dhtSensors[i]->readHumidity();
       float temperature = dhtSensors[i]->readTemperature();
-      sensorValue = String(humidity) + " " + String(temperature);
+      if (isnan(humidity) || isnan(temperature)) {
+        Serial.println("arduino/logs Error reading from DHT sensor " + sensorIds[i]);
+      } else {
+        sensorValue = String(humidity) + " " + String(temperature);
+        Serial.println("sensor/" + sensorTypes[i] + " " + sensorIds[i] + " " + sensorValue);
+      }
     } else {
-      sensorValue = String(analogRead(sensorPins[i]));
+      int rawValue = analogRead(sensorPins[i]);
+      if (rawValue == -1) {
+        Serial.println("arduino/logs Error reading from analog sensor " + sensorIds[i]);
+      } else {
+        sensorValue = String(rawValue);
+        Serial.println("sensor/" + sensorTypes[i] + " " + sensorIds[i] + " " + sensorValue);
+      }
     }
-    Serial.println("sensor/" + sensorTypes[i] + " " + sensorIds[i] + " " + sensorValue);
   }
 }
 

@@ -26,8 +26,8 @@ class SensorHubController:
         
         self.load_sensors()
         self.set_max_readings(self.max_readings)
+        
         self.client.loop_start()
-        self.logger.info(f"")
         self.logger.info("SensorHubController initialized with the following configuration:")
         self.logger.info("MQTT Broker: %s", self.mqtt_broker)
         self.logger.info("MQTT Port: %d", self.mqtt_port)

@@ -67,11 +67,17 @@ def process_serial_data():
     global last_sensor_data
     while True:
         try:
-            line = ser.readline().decode('utf-8').strip()
+            line = ser.readline()
             if line:
+                try:
+                    decoded_line = line.decode('utf-8').strip()
+                except UnicodeDecodeError:
+                    logger.warning(f"Failed to decode line using UTF-8: {line}")
+                    decoded_line = line.decode('utf-8', errors='ignore').strip()
+                    
                 with lock:
-                    logger.debug(f"Received message on serial port: `{line}`")
-                    topic, message = line.split(" ", 1)
+                    logger.debug(f"Received message on serial port: `{decoded_line}`")
+                    topic, message = decoded_line.split(" ", 1)
                     logger.debug(f"Received message on topic `{topic}`: `{message}`")
                     if topic == "arduino/logs":
                         logger.info(message)
