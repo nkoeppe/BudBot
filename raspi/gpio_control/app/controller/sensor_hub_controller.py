@@ -15,7 +15,6 @@ class SensorHubController:
         self.running = False
         self.last_sensor_data = {}
         self.sensor_readings = {}  # Dictionary to store the last n readings for each sensor
-        self.max_readings = self.config_manager.get('sensor_hub.max_readings', 10)  # Get max_readings from config
         self.subscribed_topics = []  # Keep track of subscribed topics
 
         self.logger.debug("Initializing SensorHubController with MQTT broker: %s, port: %d", mqtt_broker, mqtt_port)
@@ -24,8 +23,11 @@ class SensorHubController:
         self.client.connect(mqtt_broker, mqtt_port)
         self.load_subscriptions()
         
+        
+        self.clear_all()
+        self.set_max_readings(self.config_manager.get('sensor_hub.max_readings', 10))
         self.load_sensors()
-        self.set_max_readings(self.max_readings)
+        
         
         self.client.loop_start()
         self.logger.info("SensorHubController initialized with the following configuration:")
@@ -49,7 +51,6 @@ class SensorHubController:
             self.subscribe_topic(topic)
 
     def load_sensors(self):
-        self.clear_all()
         sensors = self.config_manager.get('sensor_hub.sensors', {})
         for label, sensor in sensors.items():
             if sensor['type'].startswith('dht'):
