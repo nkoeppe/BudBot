@@ -256,11 +256,13 @@ def get_sensor_calibration(label):
     else:
         return jsonify({"status": "error", "message": f"Calibration not found for sensor {label}"}), 404
 
-@main.route('/sensor-hub/max-readings', methods=['GET', 'POST'])
+@main.route('/sensor-hub/config', methods=['GET', 'POST'])
 def max_readings():
     if request.method == 'POST':
         max_readings = request.json.get('max_readings')
-        if max_readings is not None and isinstance(max_readings, int) and max_readings > 0:
+        interval = request.json.get('interval')
+        if max_readings is not None and isinstance(max_readings, int) and max_readings > 0 and interval is not None and isinstance(interval, int) and interval > 0:
+            config_manager.set('sensor_hub.interval', interval)
             sensor_hub_controller.set_max_readings(max_readings)
             logger.info(f"Max readings updated to {max_readings}")
             return jsonify({"status": "success", "message": f"Max readings updated to {max_readings}"}), 200
