@@ -380,8 +380,8 @@ class WaterNutrientController:
             max_watering_time = self.config_manager.get('max_watering_time', 60)
             
             self.sensor_controller.set_interval(100)
-            max_readings = self.config_manager.get('sensor_hub.max_readings', 5)
-            self.sensor_controller.set_max_readings(5)
+            max_readings_orig = self.config_manager.get('sensor_hub.max_readings', 5)
+            self.sensor_controller.set_max_readings(1)
 
             if self.config_manager.get('abort_mode', False):
                 self.logger.info("ABORT mode active, stopping watering for plant: %s", plant_id)
@@ -394,7 +394,7 @@ class WaterNutrientController:
                 if self.config_manager.get('abort_mode', False):
                     self.logger.info("ABORT mode activated, stopping watering for plant: %s", plant_id)
                     break
-                time.sleep(0.1)
+                time.sleep(0.05)
             
             self.relay_controller.turn_off(pump['pin'])
             end_time = time.time()
@@ -406,7 +406,7 @@ class WaterNutrientController:
                 self.logger.warning("Max watering time reached for plant: %s. Stopping watering.", plant_id)
             
             self.logger.info("Distribution complete for plant: %s. Estimated water added: %.2f ml", plant_id, estimated_water_added)
-            self.sensor_controller.set_max_readings(max_readings)
+            self.sensor_controller.set_max_readings(max_readings_orig)
             self.sensor_controller.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.sensor_controller.max_readings))
 
         except Exception as e:
