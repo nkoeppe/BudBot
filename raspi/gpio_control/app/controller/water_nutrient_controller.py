@@ -226,6 +226,9 @@ class WaterNutrientController:
         """
         try:
             mixer_full_sensor = self.fill_level_sensor.get('mixer_full', {'pin': -1})
+            if mixer_full_sensor['pin'] == -1:
+                return False
+            
             # Read the GPIO input
             is_full = self.relay_controller.get_pin_state(mixer_full_sensor['pin'])
             return is_full
@@ -408,7 +411,7 @@ class WaterNutrientController:
             self.logger.info("Distribution complete for plant: %s. Estimated water added: %.2f ml", plant_id, estimated_water_added)
             self.sensor_controller.set_max_readings(max_readings_orig)
             self.sensor_controller.set_interval(ceil(self.config_manager.get('sensor_hub.interval', 5000)/self.sensor_controller.max_readings))
-
+            return estimated_water_added
         except Exception as e:
             self.logger.error("Error in sensor-based distribution to plant %s: %s", plant_id, e)
 
@@ -444,8 +447,9 @@ class WaterNutrientController:
         try:
             self.logger.debug("Running sensor based watering cycle for plant: %s", plant_id)
             self.mix_nutrients()    
-            self.fill_mixer_with_water()
-            self.sensor_based_distribute_to_plant(plant_id)
+            estimated_water_added = self.sensor_based_distribute_to_plant(plant_id)
+            self.fill_mixer_with_water(estimated_water_added)
+            
             self.logger.info("Watering cycle complete for plant: %s", plant_id)
             return True
         except Exception as e:
